@@ -12,6 +12,30 @@ class InstallCommand(Command):
         try:
             if not os.path.exists("zkbp_module/curv"):
                 subprocess.run(["git", "clone", "https://github.com/ZenGo-X/curv.git", "zkbp_module/curv"], check=True)
+
+            if not os.path.exists("@openzeppelin/contracts"):
+                # Clone the repository with filtering and no checkout
+                subprocess.run([
+                    "git", "clone", "--filter=blob:none", "--no-checkout",
+                    "https://github.com/OpenZeppelin/openzeppelin-contracts.git",
+                    "@openzeppelin"
+                ], check=True)
+
+                # Change directory to the cloned repository
+                os.chdir("@openzeppelin")
+
+                # Set sparse-checkout to cone mode
+                subprocess.run(["git", "sparse-checkout", "set", "--cone"], check=True)
+
+                # Checkout the master branch
+                subprocess.run(["git", "checkout", "master"], check=True)
+
+                # Set sparse-checkout to include only the contracts directory
+                subprocess.run(["git", "sparse-checkout", "set", "contracts"], check=True)
+
+                # Change back to the original directory
+                os.chdir("..")
+
             [shutil.copy(file, "zkbp_module/curv/src/cryptographic_primitives/proofs/") for file in glob.glob("zkbp_module/src/proofs/*")]
             subprocess.run(["maturin", "develop", "-r", "-m", "./zkbp_module/Cargo.toml"], check=True)
             run_test()
