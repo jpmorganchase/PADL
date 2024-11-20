@@ -12,12 +12,54 @@ class InstallCommand(Command):
         try:
             if not os.path.exists("zkbp_module/curv"):
                 subprocess.run(["git", "clone", "https://github.com/ZenGo-X/curv.git", "zkbp_module/curv"], check=True)
+
+            # if not os.path.exists("@openzeppelin/contracts"): 
+            #     openzeppelin_download()
+
             [shutil.copy(file, "zkbp_module/curv/src/cryptographic_primitives/proofs/") for file in glob.glob("zkbp_module/src/proofs/*")]
             subprocess.run(["maturin", "develop", "-r", "-m", "./zkbp_module/Cargo.toml"], check=True)
             run_test()
         except subprocess.CalledProcessError as e:
             print(f"An error occurred: {e}")
             raise
+
+class ContractCommand(Command):
+    description = "contract download"
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        openzeppelin_download()    
+
+def openzeppelin_download():
+    # Clone the repository with filtering and no checkout
+    subprocess.run([
+        "git", "clone", "--filter=blob:none", "--no-checkout",
+        "https://github.com/OpenZeppelin/openzeppelin-contracts.git",
+        "@openzeppelin"
+    ], check=True)
+
+    # Change directory to the cloned repository
+    os.chdir("@openzeppelin")
+
+    # Set sparse-checkout to cone mode
+    subprocess.run(["git", "sparse-checkout", "set", "--cone"], check=True)
+
+    # Checkout the master branch
+    subprocess.run(["git", "checkout", "master"], check=True)
+
+    # Set sparse-checkout to include only the contracts directory
+    subprocess.run(["git", "sparse-checkout", "set", "contracts"], check=True)
+
+    # Change back to the original directory
+    os.chdir("..")
+
+
 class TestCommand(Command):
     description = "Run unittests."
     user_options = []
@@ -86,9 +128,11 @@ setup(
     cmdclass={
         'init': InstallCommand,
         'test': TestCommand,
-        'clean': CleanCommand
+        'clean': CleanCommand,
+        'contract': ContractCommand
     },
     author='GT Applied Research JP-MorganChase',
     description='Installation of Python package of Padl',
     url='https://github.com/yourusername/your-repo',
 )
+
