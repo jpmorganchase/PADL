@@ -22,7 +22,7 @@ parent_dir = str(Path(path).parents[1])  # go up 2 levels [1] to '/zkledgerplayg
 sys.path.append(parent_dir)
 from pyledger.zkutils import Commit, Token, r_blend, Secp256k1  # interface to zkbp.
 from pyledger.extras.injective_utils import InjectiveUtils
-BITS = 64
+BITS = 32
 MAX = int(2 ** (BITS / 4))
 
 
@@ -36,7 +36,7 @@ class Auditing:
     def validate_proof_of_balance(tx):
         cms = [c.cm for c in tx]
         sum_cms = reduce(lambda x, y: zkbp.add_value_commits(x, y), cms)
-        if sum_cms == len(sum_cms) * '0':
+        if zkbp.from_str(sum_cms).is_zero():
             for t in tx: t.P_B = True
             return True
         else:
@@ -45,7 +45,7 @@ class Auditing:
 
 
     @staticmethod
-    def valdiate_proof_of_asset(txs, zero_line, i, tx, nbit=int(BITS/2), asset=0):
+    def valdiate_proof_of_asset(txs, zero_line, i, tx, nbit=int(BITS), asset=0):
         range_proof = tx[i].P_A
         cms = [x[asset][i].cm for x in txs if len(x) > asset]
         cms.append(zero_line[i][asset].cm)  # issued asset value

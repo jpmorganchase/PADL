@@ -21,7 +21,7 @@ parent_dir = str(Path(path).parents[1])  # go up 2 levels [1] to '/zkledgerplayg
 sys.path.append(parent_dir)
 from pyledger.zkutils import Commit, Token, r_blend, Secp256k1  # interface to zkbp.
 from pyledger.extras.injective_utils import InjectiveUtils
-BITS = 64
+BITS = 32
 MAX = int(2 ** (BITS / 4))
 
 
@@ -32,10 +32,15 @@ class ProofGenerator:
 """
 
 
-    def generate_proof_of_asset(self, v, r, n_bit=int(BITS/2)):
+    def generate_proof_of_asset(self, v, r, n_bit=BITS):
         from pyledger.Proof_verification import Auditing
         start = time.time()
         range_proof = zkbp.range_proof_single(n_bit=n_bit, val=v, gh=zkbp.gen_GH(), r=r.val)
+#        print(n_bit, v)
+        c=Commit(zkbp.gen_GH(),v,r)
+#        print('commit',c.eval.get, zkbp.get_y_coord(c.eval))
+        
+#        print(range_proof)
         done = time.time()
         elapsed = done - start
         return range_proof
@@ -147,9 +152,6 @@ class ProofGenerator:
         range_proof = zkbp.range_proof_single(n_bit=n_bit, val=sum_v_ratio, gh=self.gh, r=sum_r_ratio.val)
         return range_proof
     
-########################################################################################################################################
-########################################################################################################################################
-    
 
     def generate_range_proof_positive_commitment_erc(self, val, pub_key):
         """generate the range proof positive commitment
@@ -190,8 +192,6 @@ class ProofGenerator:
         r = reduce(lambda x, y: x+y, rs)
         rpr = {"cm": Secp256k1.get_xy(c.get), "pr1": eqprs[0], "pr2": eqprs[1], "pr3": eqprs[2], "pr4": eqprs[3]}
         return rpr, t, c, r
-    
-
     
 
     def generate_range_proof_positive_commitment(self, val, id, ledger, smart_contract=True):

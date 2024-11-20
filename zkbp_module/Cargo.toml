@@ -8,9 +8,12 @@ edition = "2021"
 name = "zkbp"
 crate-type = ["cdylib"]
 
+[patch.crates-io]
+curv-kzen = {path="./curv"}
+bulletproof-kzen = {path="./bulletproofs"}
 
 [dependencies]
-curv-kzen = {default-features = false, features= ["num-bigint"] }
+curv-kzen = {default-features = false, features= ["num-bigint"],path="./curv" }
 sha2 = "0.9"
 bulletproof-kzen = {version="1.2.1", default-features = false}
 pyo3 = { version = "0.17.3", features = ["extension-module","abi3-py37"] }
@@ -22,5 +25,5 @@ json_value_merge = "2.0.0"
 rand = "0.7"
 rand_legacy = { package = "rand", version = "0.6" }
 rand_core = "0.4.0"
-[patch.crates-io]
-curv-kzen = {path="./curv"}
+
+

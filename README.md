@@ -1,4 +1,4 @@
-# PADL 
+# PADL extension to Bn254 using Ark-bn254 lib
 ## Customized & Efficient ZK toolkit for Private and auditable Ledger
 
 PADL is based on zero-knowledge proofs for inter-parties framework for exploring applications for financial institutes. Padl utilises Sigma Protocols and range proofs on homomorphic multi-asset ledger with smart-contracts capability to verify transactions on chain.
@@ -11,16 +11,12 @@ PADL is based on zero-knowledge proofs for inter-parties framework for exploring
 
 ### Env. Prerequests
 1. python > 3.8 and Rust.
-2. For testing on smart contracts: `nodejs`, and for local evm testing env., for example ganache-cli, OpenZeppelin contracts such as ERC20.
-
+2. Smart Contracts to be added.
 ### Padl Installation
-3. Run `sh .\setup.sh`
-
-The `setup.sh` will automatically run the `\zkledgerplayground\pyledger\examples\ledger_local.py` example file.
-See more examples (pyledger/examples), and tutorials under (./tutorials).
+In new python env. Run "python setup.py init"
 
 ## Citing PADL
-To cite PADL, please reference the (LINK HERE + BIBTEX)
+To cite PADL, please reference the (LINK HERE + BIBTEX) will be added soon.
 
 ## License
 PADL has a Apache v2-style license, as found in the LICENSE file.
