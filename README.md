@@ -19,6 +19,9 @@ PADL is based on zero-knowledge proofs for inter-parties framework for exploring
 ## openzeppelin-contracts
 To run the example padl_deployERC.py, need to run `python setup.py contract` to download the openzeppelin-contracts library.
 
+## Run python `serv.py` under the dictionary `PADL\cloud_server\python_storage`
+
+
 See more examples (pyledger/examples), and tutorials under (./tutorials).
 
 ## Citing PADL
