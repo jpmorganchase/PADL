@@ -26,8 +26,11 @@ from pyledger.extras.injective_utils import InjectiveUtils
 from pyledger.Proof_Generation import ProofGenerator
 from pyledger.Proof_verification import Auditing
 
-BITS = 64
-MAX = int(2 ** (BITS / 4))
+# BITS = 64
+BITS = 32
+# MAX = int(2 ** (BITS / 4))
+MAX = int(2 ** 16)
+
 
 
 

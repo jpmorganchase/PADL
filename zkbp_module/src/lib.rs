@@ -240,6 +240,34 @@ fn range_proof_test(n_bit: usize, val: i32)-> PyResult<String> {
     Ok((n_bit).to_string())
 }
 
+#[pyfunction]
+fn ghvec(n_bit: usize)-> PyResult<String> {
+    let n = n_bit;
+    // batch size
+    let m = 1;
+    let nm = n * m;
+    // some seed for generating g and h vectors
+    let KZen: &[u8] = &[75, 90, 101, 110];
+    let kzen_label = BigInt::from_bytes(KZen);
+    // G,H - points for pederson commitment: com  = vG + rH
+    let g_vec = (0..nm)
+        .map(|i| {
+            let kzen_label_i = BigInt::from(i as u32) + &kzen_label;
+            let hash_i = Sha512::new().chain_bigint(&kzen_label_i).result_bigint();
+            generate_random_point(&Converter::to_bytes(&hash_i))
+        })
+        .collect::<Vec<Point<Bn254>>>();
+    // can run in parallel to g_vec:
+    let h_vec = (0..nm)
+        .map(|i| {
+            let kzen_label_j = BigInt::from(n as u32) + BigInt::from(i as u32) + &kzen_label;
+            let hash_j = Sha512::new().chain_bigint(&kzen_label_j).result_bigint();
+            generate_random_point(&Converter::to_bytes(&hash_j))
+        })
+        .collect::<Vec<Point<Bn254>>>();
+
+    Ok("[".to_owned() +  &(serde_json::to_string_pretty(&g_vec).unwrap())  +  "," + &(serde_json::to_string_pretty(&h_vec).unwrap())  + "]")
+}
 
 // This function creates the range proof (prove the value is under a certain range)
 #[pyfunction]
@@ -290,7 +318,7 @@ fn range_proof_single(n_bit: usize, val: i32, gh : &GH, r: &rand_r)-> PyResult<S
 
 // This function verifies the range proof (prove the value is under a certain range), to be specific, verifies the proof $:g^v h^r  0 < v < 2^n$.
 #[pyfunction]
-fn  range_proof_single_verify(range_proof: String, n_bit: usize, gh : &GH, ped_cm: &Commit)-> PyResult<bool>{
+fn  range_proof_single_verify(range_proof: String, n_bit: usize, gh : &GH, ped_cm: &Commit)-> PyResult<String>{
     let n = n_bit;
     // batch size
     let m = 1; // in single we will use one
@@ -319,8 +347,8 @@ fn  range_proof_single_verify(range_proof: String, n_bit: usize, gh : &GH, ped_c
         .collect::<Vec<Point<Bn254>>>();
 
     let deserialized_proof: RangeProof = serde_json::from_str(&range_proof).unwrap();
-    let mut results = RangeProof::verify(&deserialized_proof, &g_vec, &h_vec, &gh.G, &gh.H, &ped_com_vec, n).is_ok();
-    Ok(results)
+    let mut results = RangeProof::verify(&deserialized_proof, &g_vec, &h_vec, &gh.G, &gh.H, &ped_com_vec, n);
+    Ok(results.unwrap())
 }
 
 
@@ -428,6 +456,19 @@ impl Commit {
         //println!("{:#?}",s);
         let pyref = PyCell::new(py, Commit { out: s})?;
         Ok(pyref.to_object(py))
+    }
+    // This function checks the self.out point is zero and returns a boolean
+    fn x(&self) -> PyResult<String> {
+        Ok(self.out.x_coord().unwrap().to_string())
+    }
+    fn y(&self) -> PyResult<String> {
+        Ok(self.out.y_coord().unwrap().to_string())
+    }
+    fn to_bytes(&self) -> PyResult<[u8;64]> {
+        Ok(self.out.to_bytes(false)[..].try_into().unwrap())
+    }
+    fn from_bytes(&self, a : [u8;32]) -> PyResult<String> {
+        Ok(format!("{:?}",Scalar::<Bn254>::from_bytes(&a).unwrap().to_bigint()))
     }
 }
 
@@ -919,7 +960,7 @@ fn zkbp(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(to_token_from_pk, m)?)?;
     m.add_function(wrap_pyfunction!(sigma_eq_dlog_verify, m)?)?;
     m.add_function(wrap_pyfunction!(sigma_eq_dlog_verify_sha256, m)?)?;
-        m.add_function(wrap_pyfunction!(range_proof_single_verify, m)?)?;
+    m.add_function(wrap_pyfunction!(range_proof_single_verify, m)?)?;
     m.add_function(wrap_pyfunction!(consistency_proof, m)?)?;
     m.add_function(wrap_pyfunction!(consistency_proof_verify, m)?)?;
     m.add_function(wrap_pyfunction!(sigma_dlog_proof_explicit, m)?)?;
@@ -931,6 +972,7 @@ fn zkbp(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(hash_test2, m)?)?;
     m.add_function(wrap_pyfunction!(hash_test3, m)?)?;
 
+    m.add_function(wrap_pyfunction!(ghvec, m)?)?;
     m.add_function(wrap_pyfunction!(gen_new_GH, m)?)?;
     m.add_function(wrap_pyfunction!(sigma_eq_dlog_same_secret,m)?)?;
     m.add_function(wrap_pyfunction!(sigma_eq_dlog_verify_same_secret,m)?)?;

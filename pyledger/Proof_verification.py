@@ -23,7 +23,9 @@ sys.path.append(parent_dir)
 from pyledger.zkutils import Commit, Token, r_blend, Secp256k1  # interface to zkbp.
 from pyledger.extras.injective_utils import InjectiveUtils
 BITS = 32
-MAX = int(2 ** (BITS / 4))
+MAX = int(2 ** 16)
+# MAX = int(2 ** (BITS / 4))
+
 
 
 
