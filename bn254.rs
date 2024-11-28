@@ -116,7 +116,9 @@ pub mod hash_to_curve {
         let mut buf = [0u8; 64];
         SVDW.map_to_curve_g1_unchecked(<Fq as PrimeField>::from_be_bytes_mod_order(bytes)).serialize_uncompressed(buf.as_mut_slice()).unwrap();
         // Bn254Point::deserialize(buf.as_slice()).unwrap()
-        Point::<Bn254>::from_bytes(buf.as_slice()).unwrap()
+        let mut buf_r =buf.as_slice().to_vec();
+        buf_r.reverse();
+        Point::<Bn254>::from_bytes(&buf_r).unwrap()
     }
 
     //ref: imeplentation from https://github.com/version513/energon/pull/2/commits/35439875ed4f0e386e1b0c0339497159fe2419ad
@@ -168,13 +170,13 @@ pub mod hash_to_curve {
             13514471836495169457,
             415649166299893576,
         ])),
-    };  
+    };
 
     impl SvdW{
         /// A straight-line implementation of the Shallue and van de Woestijne method,
         /// ref: https://www.ietf.org/archive/id/draft-irtf-cfrg-hash-to-curve-16.html#name-shallue-van-de-woestijne-met
         fn map_to_curve_g1_unchecked(&self, u: Fq) -> G1Affine {
-            
+
             let tv1 = u * u;
             let tv1 = tv1 * self.c1;
             let tv2 = Fq::ONE + tv1;
@@ -350,11 +352,11 @@ impl ECScalar for Bn254Scalar {
     }
 
     fn deserialize(bytes: &[u8]) -> Result<Self, DeserializationError> {
-        println!("Deserialized byte");
-        println!("original: {:?}",G1Affine::generator());
-        println!("negation: {:?}",&self::GENERATOR.neg_point());
-        println!("adding negation:{:?}",self::GENERATOR.add_point(&self::GENERATOR.neg_point()));
-        println!("Ordeer: {}",Self::group_order());
+//         println!("Deserialized byte");
+//         println!("original: {:?}",G1Affine::generator());
+//         println!("negation: {:?}",&self::GENERATOR.neg_point());
+//         println!("adding negation:{:?}",self::GENERATOR.add_point(&self::GENERATOR.neg_point()));
+//         println!("Ordeer: {}",Self::group_order());
         if bytes.len() != 64 && bytes.len() != 32 {
             return Err(DeserializationError);
         }
@@ -367,20 +369,20 @@ impl ECScalar for Bn254Scalar {
             // let scalar = arkBigInt::<4>::deserialize_uncompressed_unchecked(mybytes.as_slice()).unwrap();
             // let mut mybytes = Vec::from(&bytes[..]);
             // mybytes.reverse();
-            // let scalar = SK::from_le_bytes_mod_order(&mybytes[..]); 
-            let scalar = SK::from_be_bytes_mod_order(&bytes[..]); 
+            // let scalar = SK::from_le_bytes_mod_order(&mybytes[..]);
+            let scalar = SK::from_be_bytes_mod_order(&bytes[..]);
 
-            println!("{:?}", scalar);
+           // println!("{:?}", scalar);
             return Ok(Bn254Scalar {
                 purpose: "deserialized Scalar",
                 fe: scalar.into()})
             // return Ok(Bn254Scalar::from_bigint(&BigInt::from_bytes(&bytes)))
-        } 
-        let sk = 
-        {
-            assert!(false);
-            SK::deserialize_uncompressed(bytes).map_err(|_| DeserializationError)?
-        };
+        }
+        let sk =
+            {
+                assert!(false);
+                SK::deserialize_uncompressed(bytes).map_err(|_| DeserializationError)?
+            };
         Ok(Bn254Scalar {
             purpose: "deserialized Scalar",
             fe: sk,
@@ -496,7 +498,7 @@ impl ECPoint for Bn254Point {
 
     fn y_coord(&self) -> Option<BigInt> {
         Some(BigInt::from_bytes(&self.ge.y.into_bigint().to_bytes_be()))
-        }
+    }
 
     fn coords(&self) -> Option<PointCoords> {
         None
@@ -506,7 +508,10 @@ impl ECPoint for Bn254Point {
         // assert!(false);
         let mut serialized_point: Vec<u8> = Vec::new();
         self.ge.serialize_compressed(&mut serialized_point).unwrap();
-        GenericArray::clone_from_slice(&serialized_point)
+        let ser = GenericArray::clone_from_slice(&serialized_point);
+        let mut ser_be = ser.clone();
+        ser_be.reverse();
+        ser_be
     }
 
     fn serialize_uncompressed(&self) -> GenericArray<u8, Self::UncompressedPointLength> {
@@ -514,19 +519,26 @@ impl ECPoint for Bn254Point {
         self.ge.serialize_uncompressed(&mut serialized_point).unwrap();
         let length = serialized_point.len();
         serialized_point[length-1] = serialized_point[length-1] & 0x7f; //Workaround for serialization inconsistency.
-        GenericArray::clone_from_slice(&serialized_point)
+        let ser = GenericArray::clone_from_slice(&serialized_point);
+        let mut ser_be = ser.clone();
+        ser_be.reverse();
+        ser_be
     }
 
     fn deserialize(bytes: &[u8]) -> Result<Bn254Point, DeserializationError> {
         if bytes.len() != 64 && bytes.len() != 32 {
             return Err(DeserializationError);
         }
+
+        let mut bytes_le: Vec<u8> = bytes.to_vec(); // Convert the slice to a mutable Vec<u8>
+        bytes_le.reverse(); // Reverse the Vec in-place
+
         let pk = if bytes.len() == 32 {
             // Attempt to deserialize as a compressed point and handle potential errors
-            PK::deserialize_compressed(bytes).map_err(|_| DeserializationError)?
+            PK::deserialize_compressed(&*bytes_le).map_err(|_| DeserializationError)?
         } else {
             // Attempt to deserialize as an uncompressed point and handle potential errors
-            PK::deserialize_uncompressed(bytes).map_err(|_| DeserializationError)?
+            PK::deserialize_uncompressed(&*bytes_le).map_err(|_| DeserializationError)?
         };
         Ok(Bn254Point {
             purpose: "deserialized point",
