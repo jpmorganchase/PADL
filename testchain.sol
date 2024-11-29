@@ -132,9 +132,9 @@ contract Bulletproof {
         uint256[bits_length] memory vec2n;
         uint256 vec2n_sum;
         (vec2n, vec2n_sum) =  iterate_with_sum(2);
+        uint256 z_square = mulmod(z,z,order);
         {
             // Check for eq65.
-            uint256 z_square = mulmod(z,z,order);
             uint256 z_square_minus = order - z_square;
             BN254Point memory t1u = bn254.mul(proof.T1,u_fs_challenge);
             BN254Point memory t2u2 = bn254.mul(proof.T2,mulmod(u_fs_challenge,u_fs_challenge,order));
@@ -160,17 +160,24 @@ contract Bulletproof {
         // Computing P
         {
             // P, hi, yi, z, vec2n, bits_length == count
+            uint256 z_minus = order - z;
+            BN254Point memory g_vec_sum = proof.g_vec[0];
             for (uint256 counter = 0; counter< bits_length; counter++){
                 // j==0 for single
                 // k = counter% bits_length, k==counter for single
-                uint256 zyn_zsq2n = addmod(mulmod(mulmod(z, z, order),vec2n[counter],order), mulmod(z, yi[counter], order), order);
+                uint256 zyn_zsq2n = addmod(mulmod(z_square,vec2n[counter],order), mulmod(z, yi[counter], order), order);
                 // uint256 zyn_zsq2n = (mulmod(modExp(z, 2+0, order),vec2n[counter],order)+ mulmod(z, yi[counter], order)) % order;
                 P = bn254.add(P, bn254.mul(hi[counter], zyn_zsq2n));
             }
-            uint256 z_minus = order - z;
-            for (uint256 counter = 0; counter< bits_length; counter++){
-                P = bn254.add(P, bn254.mul(proof.g_vec[counter], z_minus));
-            }            
+            for (uint256 counter=1; counter<bits_length;counter++){
+                g_vec_sum = bn254.add(g_vec_sum, proof.g_vec[counter]); //presum this -100k
+            }
+            P = bn254.add(P, bn254.mul(g_vec_sum, z_minus));
+
+            // for (uint256 counter = 0; counter< bits_length; counter++){
+            //     //TODO: sum g_vec then only multiply z_minus once.
+            //     P = bn254.add(P, bn254.mul(proof.g_vec[counter], z_minus));
+            // }            
         }
 
         //IPA
@@ -213,12 +220,7 @@ contract Bulletproof {
             uint256[lg_n] memory x_sq_arr;
             uint256[lg_n] memory x_inv_sq_arr;
             for (uint256 counter = 0; counter< lg_n; counter++){
-                // b = "";
-                // b= pushPointToHash(b, proof.L[counter]);
-                // b= pushPointToHash(b, proof.R[counter]);
-                // uint256 x = closeHash(pushPointToHash(b, G_challenge_x));
                 uint256 x = closeHash(pushPointToHash3(proof.L[counter],proof.R[counter], G_challenge_x));
-
                 uint256 x_sq = mulmod(x,x,order);
                 x_sq_arr[counter] = x_sq;
                 uint256 x_inv = inv(x);
@@ -233,25 +235,29 @@ contract Bulletproof {
             s[0] = allinv;
             uint256[bits_length] memory s_inv;
             s_inv[0] = inv(allinv);
+            ux_c = bn254.add(ux_c, bn254.add(bn254.mul(proof.g_vec[0],  mulmod(s[0], proof.a_tag, order)), bn254.mul(hi[0],mulmod((s_inv[0]),proof.b_tag,order)) ) );
             for (uint256 counter=1;counter<bits_length;counter++){
                 uint256 k = (1 << lg_i[counter-1]);
                 s[counter] = mulmod(s[counter-k], x_sq_arr[(lg_n-1) - lg_i[counter-1]], order);
                 s_inv[counter] = mulmod(s_inv[counter-k], x_inv_sq_arr[(lg_n-1) - lg_i[counter-1]], order);
-            }
 
-            uint256[bits_length] memory a_time_s;
-            uint256[bits_length] memory b_div_s;
-            for (uint256 counter=0;counter<bits_length;counter++){
-                a_time_s[counter] = mulmod(s[counter], proof.a_tag, order);
-                b_div_s[counter] = mulmod((s_inv[counter]),proof.b_tag,order);
-                // b_div_s[counter] = mulmod(inv(s[counter]),proof.b_tag,order);
-            }
-
-            //Multi Scalar Mul - MSM
-            for (uint256 counter=0;counter<bits_length;counter++){
-                ux_c = bn254.add(ux_c, bn254.add(bn254.mul(proof.g_vec[counter], a_time_s[counter]), bn254.mul(hi[counter], b_div_s[counter]) ) );
+                ux_c = bn254.add(ux_c, bn254.add(bn254.mul(proof.g_vec[counter],  mulmod(s[counter], proof.a_tag, order)), bn254.mul(hi[counter],mulmod(s_inv[counter],proof.b_tag,order)) ) );
             }
             require(ux_c.x == P.x && ux_c.y == P.y);
+
+
+            // uint256[bits_length] memory a_time_s;
+            // uint256[bits_length] memory b_div_s;
+            // for (uint256 counter=0;counter<bits_length;counter++){
+            //     a_time_s[counter] = mulmod(s[counter], proof.a_tag, order);
+            //     b_div_s[counter] = mulmod((s_inv[counter]),proof.b_tag,order);
+            //     // b_div_s[counter] = mulmod(inv(s[counter]),proof.b_tag,order);
+            // }
+            //Multi Scalar Mul - MSM
+            // for (uint256 counter=0;counter<bits_length;counter++){
+            //     ux_c = bn254.add(ux_c, bn254.add(bn254.mul(proof.g_vec[counter],  a_time_s[counter], bn254.mul(hi[counter],b_div_s[counter]) ) );
+            // }
+            // require(ux_c.x == P.x && ux_c.y == P.y);
         }
 
         //////// return (ux_c.x,ux_c.y);
@@ -261,8 +267,4 @@ contract Bulletproof {
         
     }
 
-    // You can read from a state variable without sending a transaction.
-    function get() public view returns (uint256) {
-        return num;
-    }
 }
