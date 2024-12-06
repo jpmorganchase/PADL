@@ -217,3 +217,21 @@ class Secp256k1:
     @staticmethod
     def to_scalar_from_zero(hex=64):
         return zkbp.to_scalar_from_str(str(0)*hex)
+
+class BNCurve:
+    @staticmethod
+    def get_xy(comppoint):
+        cm = zkbp.from_str(comppoint)
+        x = cm.x
+        y = cm.y
+        return (int(x), int(y))
+
+    @staticmethod
+    def get_ec_from_cells(p):
+        cmx, cmy = BNCurve.get_xy(p.cm)
+        tkx, tky = BNCurve.get_xy(p.token)
+        return ((cmx, cmy),(tkx, tky))
+
+    @staticmethod
+    def test():
+        return True
