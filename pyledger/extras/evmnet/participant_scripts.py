@@ -3,7 +3,7 @@ GTAR - London - JPMorgan Chase """
 import zkbp
 from pyledger.extras.evmnet.contractpadl import PadlEVM
 from pyledger.extras.evmnet.injective_tx import PADLEvmInjective
-from pyledger.zkutils import r_blend, Commit, Secp256k1
+from pyledger.zkutils import r_blend, Commit, Secp256k1, curve_util
 from pyledger.extras import utils
 import os
 import logging
@@ -153,7 +153,7 @@ def check_supply(file_name):
 
 def check_balance(file_name,contract_tx_name="PADLOnChain", file_name_contract="PADLOnChain.sol"):
     bank = utils.load_bank_from_file(file_name)
-    ledger = PADLEvmInjective(secret_key=bank.sk, contract_address=bank.contract_address,contract_tx_name=contract_tx_name,file_name_contract=file_name_contract)
+    ledger = PADLEvmInjective(secret_key=bank.sk_ext, contract_address=bank.contract_address,contract_tx_name=contract_tx_name,file_name_contract=file_name_contract)
 
     id = bank.id
     bals=[]
@@ -192,8 +192,8 @@ def check_balance_by_state(file_name, contract_tx_name, file_name_contract):
     print(f" PADL Balance for {file_name} ")
     for a in range(len(states)):
         c,t = states[a]
-        c = zkbp.from_str(Secp256k1.get_compressed_ecpoint(c[0],c[1]))
-        t = zkbp.to_token_from_str(Secp256k1.get_compressed_ecpoint(t[0],t[1]))
+        c = zkbp.from_str(curve_util.get_compressed_ecpoint(c[0],c[1]))
+        t = zkbp.to_token_from_str(curve_util.get_compressed_ecpoint(t[0],t[1]))
         bal = zkbp.get_brut_v(c,t,ledger.gh, bank.sk_pk_obj, MAX)
         print(bank.asset_secret_map[str(a)],bal)
         
@@ -284,7 +284,7 @@ def check_all_balances_audit(file_name, ids=None, assets=None, check_match=None,
 
 def get_ledger_bank_padl(file_name, contract_tx_name="PADLOnChain", file_name_contract="PADLOnChain.sol"):
     bank = utils.load_bank_from_file(file_name)
-    ledger = PADLEvmInjective(secret_key=bank.sk,
+    ledger = PADLEvmInjective(secret_key=bank.sk_ext,
                         contract_address=bank.contract_address,
                         contract_tx_name=contract_tx_name,
                         file_name_contract=file_name_contract,

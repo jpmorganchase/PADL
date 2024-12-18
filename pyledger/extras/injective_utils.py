@@ -9,16 +9,16 @@ sys.path.append(parent_dir)
 BITS = 32
 import json
 import numpy as np
-from pyledger.zkutils import Secp256k1, BNCurve
+from pyledger.zkutils import curve_util
 
 # try to
 class InjectiveUtils():
 
-    def __init__(self,curve):
-        self.curve = curve
+    # def __init__(self,curve):
+    #     self.curve = curve
 
-    #@staticmethod
-    def get_four_squares(self,x):
+    @staticmethod
+    def get_four_squares(x):
         """
         function to find numbers whose squares sum up to x = v1^2 + v2^2 + v3^2+ v4^2
         :param x: any integer
@@ -33,8 +33,8 @@ class InjectiveUtils():
                             return (i,j,l,m)
         return(0,0,0,0)
 
-    #@staticmethod
-    def format_range_proof_positive_commitment(self,rpr):
+    @staticmethod
+    def format_range_proof_positive_commitment(rpr):
         useful_keys_point = {'cm1':'cm1',
                              'cm2':'cm2',
                              'cm3':'cm3',
@@ -49,32 +49,27 @@ class InjectiveUtils():
                               'challenge_response_D':'chalRspD',
                               'challenge_response_D1':'chalRspD1',
                               'challenge_response_D2':'chalRspD2'}
-        useful_pr_point = {useful_keys_point[key]:Secp256k1.get_xy(rpr[key]['point']) for key in useful_keys_point.keys()}
+        useful_pr_point = {useful_keys_point[key]:curve_util.get_xy(rpr[key]['point']) for key in useful_keys_point.keys()}
         useful_pr_scalar = {useful_keys_scalar[key]:int('0x'+rpr[key]['scalar'],16) for key in useful_keys_scalar.keys()}
         useful_pr_point.update(useful_pr_scalar)
         return useful_pr_point
 
-    #@staticmethod
-    def format_proofs(self, pr, curve='Secp256k1'):
-        if curve == 'BN':
-            sol_pr = pr
+    @staticmethod
+    def format_proofs(pr):
         pr = json.loads(pr)
         sol_pr = pr
         for key,values in pr.items():
             if 'scalar' in pr[key]:
                 sol_pr[key] = int('0x' + pr[key]['scalar'],16)
             elif 'point' in pr[key]:
-                if curve == 'BN':
-                    sol_pr[key] = self.curve.get_xy(pr[key]['point'])
-                else:
-                    sol_pr[key] = self.curve.get_xy(pr[key]['point'])
+                sol_pr[key] = curve_util.get_xy(pr[key]['point'])
             else:
                 sol_pr[key] = pr[key]
         return sol_pr
 
 
-    #@staticmethod
-    def format_eq_proof(self,pr):
+    @staticmethod
+    def format_eq_proof(pr):
         pr = json.loads(pr)
         useful_keys_point = {'pk': 'pk',
                              'pk_t_rand_commitment':'pktrand'}
@@ -82,35 +77,30 @@ class InjectiveUtils():
                              #'challengepk':'challengepk'}
 
         useful_keys_scalar = {'challenge_response':'chalrsp'}
-        useful_pr_point = {useful_keys_point[key]:self.curve.get_xy(pr[key]['point']) for key in useful_keys_point.keys()}
+        useful_pr_point = {useful_keys_point[key]:curve_util.get_xy(pr[key]['point']) for key in useful_keys_point.keys()}
         useful_pr_scalar = {useful_keys_scalar[key]:int('0x'+pr[key]['scalar'],16) for key in useful_keys_scalar.keys()}
         useful_pr_point.update(useful_pr_scalar)
         return useful_pr_point
 
-    def get_eq_order(self,peq):
+    @classmethod
+    def get_eq_order(cls,peq):
         return (peq['pk'], peq['pktrand'],peq['chalrsp'],)
 
-    #@staticmethod
-    def format_consistency_proof(self,P_C, cm, token, pubkey, curve='Secp256k1'):
-
-        if curve == 'BN':
-            pc = json.loads(P_C)
-            pc['cm'] = self.curve.get_xy(cm)
-            pc['tk'] = self.curve.get_xy(token)
-            pc['pubkey'] = self.curve.get_xy(pubkey)
-        else:
-            pc = json.loads(P_C)
-            pc['cm'] = self.curve.get_xy(cm)
-            pc['tk'] = self.curve.get_xy(token)
-            pc['pubkey'] = self.curve.get_xy(pubkey)
+    @staticmethod
+    def format_consistency_proof(P_C, cm, token, pubkey):
+        pc = json.loads(P_C)
+        pc['cm'] = curve_util.get_xy(cm)
+        pc['tk'] = curve_util.get_xy(token)
+        pc['pubkey'] = curve_util.get_xy(pubkey)
         return json.dumps(pc)
 
-    def get_pc_order(self,pc):
+    @classmethod
+    def get_pc_order(cls,pc):
         return (pc['t1'], pc['t2'], pc['s1'], pc['s2'], pc['challenge'], pc['pubkey'], pc['cm'], pc['tk'], pc['chalcm'],
               pc['chaltk'], pc['s2pubkey'], pc['s1g'], pc['s2h'],)
 
-    #@staticmethod
-    def format_tx_to_solidity(self, tx, curve='Secp256k1'):
+    @staticmethod
+    def format_tx_to_solidity(tx):
         """
         formats a transaction to solidity transaction structure
         :param tx: PADL transaction
@@ -121,42 +111,34 @@ class InjectiveUtils():
         comptk = ""
         eqp = ""
         comppc = ""
-        for a in range(0,len(tx)):
-            for p in range(0,len(tx[a])):
+        for a in range(0, len(tx)):
+            for p in range(0, len(tx[a])):
                 if tx[a][p].cm_:
                     eqp = tx[a][p].P_A[1]
-                    # if curve='BN':
-                    compcm = self.curve.get_xy(tx[a][p].cm_)
-                    comptk = self.curve.get_xy(tx[a][p].token_)
+                    compcm = curve_util.get_xy(tx[a][p].cm_)
+                    comptk = curve_util.get_xy(tx[a][p].token_)
                     comppc = tx[a][p].P_C_
-                    # else:
-                    #     compcm = Secp256k1.get_xy(tx[a][p].cm_)
-                    #     comptk = Secp256k1.get_xy(tx[a][p].token_)
-                    #     comppc = tx[a][p].P_C_
 
-        for a in range(0,len(tx)):
-            for p in range(0,len(tx[a])):
-                #tx[a][p].P_C = self.format_consistency_proof(tx[a][p].P_C, tx[a][p].cm, tx[a][p].token, pubkeys[p],'BN')
-                #tx[a][p].P_C = self.format_consistency_proof(tx[a][p].P_C_, tx[a][p].cm, tx[a][p].token, pubkeys[p],'BN')
-
+        for a in range(0, len(tx)):
+            for p in range(0, len(tx[a])):
                 if tx[a][p].cm_:
-                    txsol.append({'cm':self.curve.get_xy(tx[a][p].cm),
-                                  'tk':self.curve.get_xy(tx[a][p].token),
-                                  'compcm': self.curve.get_xy(tx[a][p].cm_),
-                                  'comptk':self.curve.get_xy(tx[a][p].token_),
-                                  'pc': self.get_pc_order(self.format_proofs(tx[a][p].P_C)),
-                                  'pc_': self.get_pc_order(self.format_proofs(tx[a][p].P_C_)),
-                                  'peq': self.get_eq_order(self.format_eq_proof(tx[a][p].P_Eq)),
-                                  'ppositive': self.format_range_proof(tx[a][p].P_A, tx[a][p].cm_)})
+                    txsol.append({'cm': curve_util.get_xy(tx[a][p].cm),
+                                  'tk': curve_util.get_xy(tx[a][p].token),
+                                  'compcm': compcm,
+                                  'comptk': comptk,
+                                  'ppositive': tx[a][p].P_A[0],
+                                  'pc': InjectiveUtils.format_proofs(tx[a][p].P_C),
+                                  'peq': InjectiveUtils.format_eq_proof(eqp),
+                                  'pc_': InjectiveUtils.format_proofs(tx[a][p].P_C_)})
                 else:
-                    txsol.append({'cm':self.curve.get_xy(tx[a][p].cm),
-                                  'tk':self.curve.get_xy(tx[a][p].token),
-                                  'compcm': self.curve.get_xy(tx[a][p].cm_),
-                                  'comptk':self.curve.get_xy(tx[a][p].token_),
-                                  'pc': self.get_pc_order(self.format_proofs(tx[a][p].P_C)),
-                                  'pc_': self.get_pc_order(self.format_proofs(comppc)),
-                                  'peq':self.get_eq_order(self.format_eq_proof(tx[a][p].P_Eq)),
-                                  'ppositive':self.format_range_proof(tx[a][p].P_A, tx[a][p].cm_)})
+                    txsol.append({'cm': curve_util.get_xy(tx[a][p].cm),
+                                  'tk': curve_util.get_xy(tx[a][p].token),
+                                  'compcm': compcm,
+                                  'comptk': comptk,
+                                  'ppositive': tx[a][p].P_A,
+                                  'pc': InjectiveUtils.format_proofs(tx[a][p].P_C),
+                                  'peq': InjectiveUtils.format_eq_proof(eqp),
+                                  'pc_': InjectiveUtils.format_proofs(comppc)})
         return txsol
 
     def format_range_proof(self,rp, cm):

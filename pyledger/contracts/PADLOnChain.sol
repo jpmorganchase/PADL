@@ -351,7 +351,7 @@ contract PADLOnChain {
 
         // Proof of positive commitment and proof of consistency
         for (uint256 p = 0; p < allParticipants.length; p++) {
-            if (p != id){
+            if (p != id){ // everyone? SE
             // first check if commitment in range proof sums up to main commitment
                 (tempcm.x, tempcm.y) = (ctx[p].ppositive.pr1.cm1.x, ctx[p].ppositive.pr1.cm1.y);
                 (tempcm.x, tempcm.y) = secp.add(tempcm.x, tempcm.y, ctx[p].ppositive.pr2.cm1.x, ctx[p].ppositive.pr2.cm1.y);

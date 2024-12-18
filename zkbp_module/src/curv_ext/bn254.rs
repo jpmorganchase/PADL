@@ -485,11 +485,14 @@ impl ECPoint for Bn254Point {
         &BASE_POINT2
     }
 
-    fn from_coords(_x: &BigInt, _y: &BigInt) -> Result<Bn254Point, NotOnCurve> {
-        unimplemented!()
-        // Underlying library intentionally hides x coordinate. There's no way to match if `x`
-        // correspond to given `y`.
-        // Err(NotOnCurve)
+   fn from_coords(_x: &BigInt, _y: &BigInt) -> Result<Bn254Point, NotOnCurve> {
+        let x = Bn254Scalar::from_bigint(_x);
+        let y = Bn254Scalar::from_bigint(_y);
+        let point = ark_bn254::G1Affine::new(Fq::from(x.fe.into_bigint()), Fq::from(y.fe.into_bigint()));
+        Ok(Bn254Point {
+            purpose: "point_from_coords",
+            ge: point.into(),
+        })
     }
 
     fn x_coord(&self) -> Option<BigInt> {

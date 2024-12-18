@@ -219,6 +219,7 @@ class Secp256k1:
         return zkbp.to_scalar_from_str(str(0)*hex)
 
 class BNCurve:
+    gh = zkbp.gen_GH()
     @staticmethod
     def get_xy(comppoint):
         cm = zkbp.from_str(comppoint)
@@ -227,11 +228,45 @@ class BNCurve:
         return (int(x), int(y))
 
     @staticmethod
+    def to_scalar_from_zero(hex=64):
+        return zkbp.to_scalar_from_str(str(0)*hex)
+
+    @staticmethod
+    def get_compressed_ecpoint(x, y):
+        return zkbp.from_coords(f"{x:064x}",f"{y:064x}").get
+
+
+    @staticmethod
     def get_ec_from_cells(p):
         cmx, cmy = BNCurve.get_xy(p.cm)
         tkx, tky = BNCurve.get_xy(p.token)
         return ((cmx, cmy),(tkx, tky))
 
     @staticmethod
-    def test():
-        return True
+    def to_scalar(st):
+        if len(st) == 66 and st[0:2] == "0x":
+            return zkbp.to_scalar_from_str(st[2:])
+        elif len(st) == 64:
+            return zkbp.to_scalar_from_str(st)
+        else:
+            raise AssertionError
+
+    @staticmethod
+    def to_pk(secret_key):
+        if len(secret_key) == 66 and secret_key[0:2]=="0x":
+            secret_scalar = BNCurve.to_scalar(secret_key[2:])
+        elif len(secret_key) == 64:
+            secret_scalar = BNCurve.to_scalar(secret_key)
+        else: raise AssertionError
+
+        sk_pk_obj = zkbp.regen_pb_sk(BNCurve.gh, secret_scalar)
+        return sk_pk_obj.get_pk()
+
+curve_util = Secp256k1
+try:
+    if zkbp.curve_name()=="Bn254":
+        curve_util = BNCurve
+except:
+    pass
+
+

@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.WARN, format='%(message)s')
 path = os.path.realpath(__file__)
 parent_dir = str(Path(path).parents[1])
 sys.path.append(parent_dir)
-from pyledger.zkutils import Commit, Token, r_blend, Secp256k1
+from pyledger.zkutils import Commit, Token, r_blend, curve_util
 from pyledger.extras.injective_utils import InjectiveUtils
 from pyledger.Proof_Generation import ProofGenerator
 BITS = 64
@@ -34,7 +34,7 @@ class CreateTx():
 
         
         if sparse_tx:
-            r_tx = [r_blend(Secp256k1.to_scalar_from_zero()) if vals[p]==0 else r_blend() for p in range(n_banks)]
+            r_tx = [r_blend(curve_util.to_scalar_from_zero()) if vals[p]==0 else r_blend() for p in range(n_banks)]
             non_zeros_i=[p for p in range(n_banks) if vals[p]!=0]
             if len(non_zeros_i):
                 comp_ri = random.choice([p for p in range(n_banks) if vals[p]!=0])
@@ -89,7 +89,6 @@ class CreateTx():
                 :param audit_pk:
                 :return: transaction
         """
-
         txns = []
         v_send = []
         r_send = []
@@ -154,19 +153,16 @@ class InjectiveTx(CreateTx):
             for id,v in enumerate(vals[a]):
                 cell_a_p = tx[a][id]
                 if id != self.bank.id:
-                    if smart_contract:
-                        rpr,token,cm,r = ProofGenerator().generate_range_proof_positive_commitment(v, id, ledger)
-                    else:
-                        rpr,token,cm,r = ProofGenerator().generate_range_proof_positive_commitment(v, id, ledger, smart_contract=False)
-
+                    # rpr, token, cm, r = ProofGenerator().generate_range_proof_positive_commitment(v, id, ledger,smart_contract=smart_contract)
+                    r = r_blend()
+                    cm = zkbp.commit(v,r.val,ledger.gh)
+                    token = zkbp.to_token_from_pk(pub_keys[id],r.val)
+                    rpr = ProofGenerator().generate_proof_of_asset(v, r, smart_contract=smart_contract)
                     cell_a_p.P_A = rpr
                     cell_a_p.cm = cm.get
-
                     part_rs.append(r)
                     cell_a_p.token = token.get
-
-                    cell_a_p.P_C = ProofGenerator().generate_proof_of_consistency(cm.get,token.get,[v,r],ledger.pub_keys[id])  
-
+                    cell_a_p.P_C = ProofGenerator().generate_proof_of_consistency(cm.get,token.get,[v,r],ledger.pub_keys[id])
                     cell_a_p.P_C = InjectiveUtils.format_consistency_proof(cell_a_p.P_C, cell_a_p.cm, cell_a_p.token, ledger.pub_keys[id])
             r_own = -reduce(lambda x, y: x+y, part_rs)
 
@@ -180,11 +176,8 @@ class InjectiveTx(CreateTx):
                                                                     ledger.pub_keys[self.bank.id])
 
             tx[a][self.bank.id].P_C = InjectiveUtils.format_consistency_proof(tx[a][self.bank.id].P_C, tx[a][self.bank.id].cm, tx[a][self.bank.id].token, ledger.pub_keys[self.bank.id])
-            if smart_contract:
-                rpr, token, cm_, r, eqpr, consistency_pr_= self.generate_proof_of_asset_for_injective_tx(vals, self.bank.id, ledger, tx[a][self.bank.id], a, smart_contract=True) # based on the new balance
-            else:
-                rpr, token, cm_, r, eqpr, consistency_pr_= self.generate_proof_of_asset_for_injective_tx(vals, self.bank.id, ledger, tx[a][self.bank.id], a, smart_contract=False) # based on the new balancec
-
+            rpr, token, cm_, r, eqpr, consistency_pr_, v = self.generate_proof_of_asset_for_injective_tx(vals, self.bank.id, ledger, tx[a][self.bank.id], a, smart_contract=smart_contract) # based on the new balance
+            rpr = ProofGenerator().generate_proof_of_asset(v, r, smart_contract=True)
             tx[a][self.bank.id].P_A = [rpr, eqpr]
             tx[a][self.bank.id].cm_ = cm_.get
             tx[a][self.bank.id].token_ = token.get
@@ -209,11 +202,10 @@ class InjectiveTx(CreateTx):
         if smart_contract:
             state_id = ledger.testnet_dict['contract_obj'].functions.retrieveStateId(id).call()
             c,t = state_id[asset]
-            cd = Secp256k1.get_compressed_ecpoint(c[0],c[1])
-            td = Secp256k1.get_compressed_ecpoint(t[0],t[1])
+            cd = curve_util.get_compressed_ecpoint(c[0],c[1])
+            td = curve_util.get_compressed_ecpoint(t[0],t[1])
             old_balance = self.bank.get_balance_from_contract(cd,td)   
         else:
-
             all_sc,all_st = json.loads(ledger.compute_sum_commits_tokens())
             c = zkbp.from_str(all_sc[asset][self.bank.id])
             t = zkbp.to_token_from_str(all_st[asset][self.bank.id]) 
@@ -246,7 +238,7 @@ class InjectiveTx(CreateTx):
         sum_token_minus_ptoken = zkbp.sub_token(zkbp.to_token_from_str(sum_token.get), zkbp.to_token_from_str(ptoken.get))
         com_exp_sk = (zkbp.p_to_x(sum_com_minus_pcm.eval, zkbp.to_scalar_from_str(self.bank.sk)))
         eqpr = zkbp.sigma_dlog_proof_explicit_sha256_with_witness(sum_token_minus_ptoken,  self.bank.sk_pk_obj, sum_com_minus_pcm.eval)
-        return prs, ptoken, pcm, r, eqpr, consistency_pr
+        return prs, ptoken, pcm, r, eqpr, consistency_pr, new_balance
     
 
 class InjectiveTxSmartContract(InjectiveTx):

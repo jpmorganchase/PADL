@@ -318,7 +318,7 @@ fn range_proof_single(n_bit: usize, val: i32, gh : &GH, r: &rand_r)-> PyResult<S
 
 // This function verifies the range proof (prove the value is under a certain range), to be specific, verifies the proof $:g^v h^r  0 < v < 2^n$.
 #[pyfunction]
-fn  range_proof_single_verify(range_proof: String, n_bit: usize, gh : &GH, ped_cm: &Commit)-> PyResult<String>{
+fn  range_proof_single_verify(range_proof: String, n_bit: usize, gh : &GH, ped_cm: &Commit)-> bool{
     let n = n_bit;
     // batch size
     let m = 1; // in single we will use one
@@ -348,7 +348,7 @@ fn  range_proof_single_verify(range_proof: String, n_bit: usize, gh : &GH, ped_c
 
     let deserialized_proof: RangeProof = serde_json::from_str(&range_proof).unwrap();
     let mut results = RangeProof::verify(&deserialized_proof, &g_vec, &h_vec, &gh.G, &gh.H, &ped_com_vec, n);
-    Ok(results.unwrap())
+    results.is_ok()
 }
 
 
@@ -458,9 +458,11 @@ impl Commit {
         Ok(pyref.to_object(py))
     }
     // This function checks the self.out point is zero and returns a boolean
+    #[getter]
     fn x(&self) -> PyResult<String> {
         Ok(self.out.x_coord().unwrap().to_string())
     }
+     #[getter]
     fn y(&self) -> PyResult<String> {
         Ok(self.out.y_coord().unwrap().to_string())
     }
@@ -519,8 +521,14 @@ impl rand_r {
         Ok(point_json)
     }
 
-
 }
+
+#[pyfunction]
+fn curve_name() -> PyResult<String>
+{
+    Ok(("Bn254").to_string())
+}
+
 
 // This function generates a random scalar r of type Scalar<Bn254> and returns a new rand_r instance wrapped in a Python object.
 #[pyfunction]
@@ -552,6 +560,17 @@ fn from_str(str_point: String) -> PyResult<Py<PyAny>> {
         let pyref = PyCell::new(py, Commit { out: point_a})?;
         Ok(pyref.to_object(py))})
 }
+
+#[pyfunction]
+fn from_coords(x_: String, y_: String) -> PyResult<Py<PyAny>>{
+    Python::with_gil(|py| -> PyResult<Py<PyAny>> {
+            let x = parse_string_to_scep256k1scalar(&x_);
+            let y = parse_string_to_scep256k1scalar(&y_);
+            let point = Point::<Bn254>::from_coords(&x.to_bigint(),&y.to_bigint()).unwrap();
+            let pyref = PyCell::new(py, Commit { out: point})?;
+            Ok(pyref.to_object(py))})
+}
+
 
 //This function converts a string representation of a scalar into a rand_r object and returns a new rand_r instance wrapped in a Python object.
 #[pyfunction]
@@ -971,7 +990,7 @@ fn zkbp(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(hash_test1, m)?)?;
     m.add_function(wrap_pyfunction!(hash_test2, m)?)?;
     m.add_function(wrap_pyfunction!(hash_test3, m)?)?;
-
+    m.add_function(wrap_pyfunction!(curve_name, m)?)?;
     m.add_function(wrap_pyfunction!(ghvec, m)?)?;
     m.add_function(wrap_pyfunction!(gen_new_GH, m)?)?;
     m.add_function(wrap_pyfunction!(sigma_eq_dlog_same_secret,m)?)?;
@@ -983,7 +1002,7 @@ fn zkbp(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(consistency_proof_with_witness, m)?)?;
     m.add_function(wrap_pyfunction!(sigma_eq_dlog_ped_proof_with_witness,m)?)?;
     m.add_function(wrap_pyfunction!(sigma_dlog_proof_explicit_sha256_with_witness,m)?)?;
-
+    m.add_function(wrap_pyfunction!(from_coords,m)?)?;
 
     m.add_function(wrap_pyfunction!(get_y_coord, m)?)?;
 

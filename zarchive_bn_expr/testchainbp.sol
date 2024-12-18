@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "./bn254.sol";
+import "./bn254__.sol";
 
 struct Rangeproof{
     BN254Point A;

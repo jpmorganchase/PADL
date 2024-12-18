@@ -11,13 +11,15 @@ sys.path.append(parent_dir)
 
 import hashlib
 
+solcversion="0.8.28"
+
 from pyledger.ledger import MakeLedger
 import json
 from solcx import compile_standard, install_solc, import_installed_solc
 
 if import_installed_solc() is []:
     try:
-        install_solc("0.8.19")
+        install_solc(solcversion)
     except:
         raise "require solc path for solidity compiler"
 
@@ -92,7 +94,7 @@ class EvmLedger(MakeLedger):
                     }
                 },
             },
-            solc_version="0.8.20",
+            solc_version=solcversion,
             allow_paths=os.path.join(self.local_dirname, "contracts"),
             base_path=os.path.join(self.local_dirname, "contracts")
         )

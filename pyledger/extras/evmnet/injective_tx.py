@@ -10,13 +10,13 @@ logging.basicConfig(level=logging.WARN, format='%(message)s')
 path = os.path.realpath(__file__)
 parent_dir = str(Path(path).parents[1])
 sys.path.append(parent_dir)
-from pyledger.zkutils import Commit, r_blend, Secp256k1
+from pyledger.zkutils import Commit, r_blend, curve_util
 from pyledger.ledger import BankCommunication, MakeLedger
 
 
 class PADLEvmInjective(PadlEVM):
 
-    def __init__(self, secret_key=None, v0=1000,
+    def __init__(self, secret_key=None, v0=0,
                  contract_address=None,
                  comm=BankCommunication(),
                  contract_tx_name="PADLOnChain",
@@ -36,7 +36,7 @@ class PADLEvmInjective(PadlEVM):
 
 
     def add_zero_line_to_state(self,zl):
-        zl = [Secp256k1.get_ec_from_cells(a) for a in zl]
+        zl = [curve_util.get_ec_from_cells(a) for a in zl]
         
         nonce = self.w3.eth.getTransactionCount(self.account_address)
         fn_call = self.testnet_dict["contract_obj"].functions.addZeroLineToState(zl).buildTransaction({
@@ -47,11 +47,10 @@ class PADLEvmInjective(PadlEVM):
     def send_injective_txn_padlonchain(self,tx, asset_id):
         nonce = self.w3.eth.getTransactionCount(self.account_address)
         fn_call = self.testnet_dict["contract_obj"].functions.processTx(tx, asset_id).buildTransaction({
-            "chainId":self.chain, "from":self.account_address, "nonce":nonce, "gas": 2000000000}
+            "chainId":self.chain, "from":self.account_address, "nonce":nonce, "gas": 20000000000}
         )
-
-
         receipt = self.send_txn_from_fn_call(fn_call)
+        print(f'gas used for injective tx of asset {asset_id}, and no. of parties {len(tx)}:',receipt['gasUsed'])
         assert receipt['status']==1, 'transaction error'
 
     def cashout_padl_onchain(self,sval, bankid, pr):

@@ -15,13 +15,14 @@ from pathlib import Path
 from multiprocessing import Pool
 from multiprocessing.pool import ThreadPool as Poolt
 from functools import partial
+
 from pyledger.create_tx import CreateTx, InjectiveTx, InjectiveTxSmartContract
 logging.basicConfig(level=logging.WARN, format='%(message)s')
 
 path = os.path.realpath(__file__)
 parent_dir = str(Path(path).parents[1])
 sys.path.append(parent_dir)
-from pyledger.zkutils import Commit, Token, r_blend, Secp256k1
+from pyledger.zkutils import Commit, Token, r_blend, curve_util
 from pyledger.extras.injective_utils import InjectiveUtils
 from pyledger.Proof_Generation import ProofGenerator
 from pyledger.Proof_verification import Auditing
@@ -30,9 +31,6 @@ from pyledger.Proof_verification import Auditing
 BITS = 32
 # MAX = int(2 ** (BITS / 4))
 MAX = int(2 ** 16)
-
-
-
 
 from enum import Enum
 class TransactionMode(Enum):
@@ -56,7 +54,8 @@ class Bank:
                  initial_asset_cell=None,
                  audit_pk=None,
                  audit_account={},
-                 tx_obj=CreateTx()):
+                 tx_obj=CreateTx()
+                 ):
         """
     initalise object for participant
     :param ledger : MakeLedger object of a ledger from file or local
@@ -68,14 +67,17 @@ class Bank:
         """
         self.gh = ledger.gh
         if secret_key:
-            secret_scalar = Secp256k1.to_scalar(secret_key)
+            secret_scalar = curve_util.to_scalar(secret_key)
             self.sk_pk_obj = zkbp.regen_pb_sk(self.gh, secret_scalar)  # generate pair sk/pk
         else:
             self.sk_pk_obj = zkbp.gen_pb_sk(self.gh)   # generate new pair sk/pk
-
         self.sk = self.sk_pk_obj.get_sk()  # scalar json kept secret.
         self.pk = self.sk_pk_obj.get_pk()  # point json which is shared.
 
+        if secret_key:
+            self.sk_ext = secret_key
+        else:
+            self.sk_ext = self.sk
 
         if v0 is None:
             v0 = [0]
@@ -197,6 +199,7 @@ class Bank:
         """the wallet dict to be serialised - cannot be shared"""
         json_details = json.dumps({'sk': self.sk,
                                    'pk': self.pk,
+                                   'sk_ext': self.sk_ext,
                                    'address': self.address,
                                    'contract_address': self.contract_address,
                                    'ledger_address': self.ledger_address,
@@ -424,7 +427,7 @@ class Bank:
 
 class MakeLedger:
     def __init__(self, comm=None, address="https://localhost", port=4444):
-        self.gh = Secp256k1.gh
+        self.gh = curve_util.gh
         self.txs = []
         self.zero_line = []
         self.pub_keys = []
@@ -697,15 +700,15 @@ class MakeLedger:
 
         @classmethod
         def CellZero(cls, pk):
-            gh=Secp256k1.gh
-            r0=r_blend(Secp256k1.to_scalar_from_zero())
+            gh = curve_util.gh
+            r0=r_blend(curve_util.to_scalar_from_zero())
             cm = Commit(gh, 0, r0).eval
             token = zkbp.to_token_from_pk(pk, r0.val)
             return cls(cm=cm.get, token=token.get, cm_=cm.get,token_=token.get)
 
         def is_str_sparse_cell(self):
             """sparse cell contains zero cm and cm_ to ignore in proof gen, and verification"""
-            zero_point = '00'+Secp256k1.to_scalar_from_zero().get
+            zero_point = '00'+curve_util.to_scalar_from_zero().get
             return self.cm == zero_point and self.cm_ == zero_point
 
         def is_sparse_cell(self):

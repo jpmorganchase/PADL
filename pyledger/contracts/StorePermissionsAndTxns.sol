@@ -241,5 +241,4 @@ contract StorePermissionsAndTxns{
   function retrieveState(uint256 p) public returns (string memory){
     return "not implemented for this contract";
   }
-
 }
