@@ -54,6 +54,8 @@ class Bank:
                  initial_asset_cell=None,
                  audit_pk=None,
                  audit_account={},
+                 contract_tx_name='',
+                 file_name_contract='',
                  tx_obj=CreateTx()
                  ):
         """
@@ -149,7 +151,8 @@ class Bank:
         else:
             self.address = self # only for local test purposes
         self.contract_address = contract_address
-
+        self.contract_tx_name = contract_tx_name
+        self.file_name_contract = file_name_contract
         # new tx info
         self.approval_result = False
         self.new_tx_info = True
@@ -202,6 +205,8 @@ class Bank:
                                    'sk_ext': self.sk_ext,
                                    'address': self.address,
                                    'contract_address': self.contract_address,
+                                   'contract_tx_name' : self.contract_tx_name,
+                                   'file_name_contract' : self.file_name_contract,
                                    'ledger_address': self.ledger_address,
                                    'v0': self.v0,
                                    'txs_log': self.txs_log,

@@ -18,9 +18,11 @@ import time
 path = os.path.realpath(__file__)
 parent_dir = str(Path(path).parents[2])
 sys.path.append(parent_dir)
-
+import pyledger.extras.evmnet.participant_scripts as participant_scripts
 from pyledger.extras.evmnet.participant_scripts import *
+
 import logging
+
 contract_tx_name="PADLOnChainBN"
 file_name_contract="PADLOnChainBN.sol"
 
@@ -34,24 +36,25 @@ def main():
     # starting a new ledger, and deployer already by default added itself as an issuer.
     # NOTE:
 
-    contract_address = deploy_new_contract(example_private_key, v0=[1000,1000], types={'0': 'x', '1': 'y'}, contract_tx_name="PADLOnChainBN", file_name_contract="PADLOnChainBN.sol")
+    contract_address = deploy_new_contract(example_private_key, v0=[1000,1000], types={'0': 'x', '1': 'y'},contract_tx_name=contract_tx_name,file_name_contract=file_name_contract)
     # adding another participant to the list to give access to contract.
     account_dict = create_account(contract_address)
+
     add_participant(account_dict['address'])
 
-    ledger, issuer = get_ledger_bank_padl("Issuer 0",contract_tx_name,file_name_contract)
+    ledger, issuer = get_ledger_bank_padl("Issuer 0")
     public_key = issuer.pk
     # register new bank in padl ledger (issuer is done by default using deploy_new_contract().
-    register_padl(name="Bank", v0=[10,10], types={'0': 'x', '1': 'y'}, account_dict=account_dict, audit_pk=public_key)
+    register_padl(name="Bank", v0=[10,10], types={'0': 'x', '1': 'y'}, account_dict=account_dict, audit_pk=public_key,contract_tx_name=contract_tx_name,file_name_contract=file_name_contract)
     bank_send_deposit(account_dict,10)
     check_balance("Bank 1")
     # adding another participant to the list to give access to contract.
     account_dict = create_account(contract_address)
     add_participant(account_dict['address'])
     # register new bank in padl ledger (issuer is done by default using deploy_new_contract().
-    register_padl(name="Bank", v0=[10,10], types={'0': 'x', '1': 'y'}, account_dict=account_dict, audit_pk=public_key)
+    register_padl(name="Bank", v0=[10,10], types={'0': 'x', '1': 'y'}, account_dict=account_dict, audit_pk=public_key,contract_tx_name=contract_tx_name,file_name_contract=file_name_contract)
     bank_send_deposit(account_dict,10)
-    check_balance("Bank 2",contract_tx_name,file_name_contract)
+    check_balance("Bank 2")
     for txx in range(3):
             # issuer
             tx = send_coins(vals=[ [-2, 0, 2],[-2, 0, 2] ], file_name="Issuer 0", audit_pk=public_key) # this is the broadcast  (tx + approve tx by issuer)
@@ -92,16 +95,16 @@ def main():
             # later on smart contract to append to ledger
             finalize_tx("Issuer 0")
 
-            check_balance_by_state("Bank 1", contract_tx_name, file_name_contract)
+            check_balance_by_state("Bank 1")
             check_balance("Bank 1")
-            check_balance_by_state("Bank 2", contract_tx_name, file_name_contract)
+            check_balance_by_state("Bank 2")
             check_balance("Bank 2")
             check_all_balances_audit("Issuer 0")
             print('=='*20)
             
-            send_injective_tx(vals=[[0, -2, 2],[0, -2, 2]], file_name="Bank 1", contract_tx_name=contract_tx_name,file_name_contract=file_name_contract)
-            check_balance_by_state("Bank 1", contract_tx_name, file_name_contract)
-            check_balance_by_state("Bank 2", contract_tx_name, file_name_contract)
+            send_injective_tx(vals=[[0, -2, 2],[0, -2, 2]], file_name="Bank 1")
+            check_balance_by_state("Bank 1")
+            check_balance_by_state("Bank 2")
             print('=='*100)
 
 

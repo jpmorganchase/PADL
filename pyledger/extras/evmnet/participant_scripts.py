@@ -14,6 +14,8 @@ parent_dir = str(Path(path).parents[3])
 from pyledger.create_tx import InjectiveTxSmartContract, ERCTx
 from pyledger.Proof_Generation import ProofGenerator
 
+CONTRACT_FILE="PADLOnChain"
+
 BITS = 64
 MAX = int(2 ** (BITS / 4))
 
@@ -25,7 +27,7 @@ def create_account(contract_address):
     return account_dict
 
 def register_padl(name: str, account_dict: object, v0=[0,0],
-                  types={'0': 'x', '1': 'y'}, retreive_v0 = None, audit_pk=None, audit_account={}, contract_tx_name="PADLOnChain", file_name_contract="PADLOnChain.sol") -> object:
+                  types={'0': 'x', '1': 'y'}, retreive_v0 = None, audit_pk=None, audit_account={}, contract_tx_name=CONTRACT_FILE, file_name_contract=CONTRACT_FILE+".sol") -> object:
     # TODO: remove 
     bank_gkp =PADLEvmInjective(secret_key=account_dict['private_key'], contract_address=account_dict['contract_address'], contract_tx_name=contract_tx_name, file_name_contract= file_name_contract)
 
@@ -39,6 +41,8 @@ def register_padl(name: str, account_dict: object, v0=[0,0],
                                     contract_address=account_dict['contract_address'],
                                     serialise=True,
                                     initial_asset_cell=retreive_v0,
+                                    contract_tx_name=contract_tx_name,
+                                    file_name_contract=file_name_contract,
                                     audit_pk=audit_pk,
                                     audit_account=audit_account)
     return bank
@@ -89,19 +93,21 @@ def bank_send_deposit(account_dict, amount=10):
     print(f'Contract Eth balance at address {cadd} is {cbal}')
 
 
-def request_token_commit(file_name, address, pk, deposit_v0, v0, contract_tx_name="PADLOnChain", file_name_contract="PADLOnChain.sol"):
+def request_token_commit(file_name, address, pk, deposit_v0, v0, contract_tx_name=CONTRACT_FILE, file_name_contract=CONTRACT_FILE+".sol"):
     ledger, bank = get_ledger_bank_padl(file_name, contract_tx_name, file_name_contract)
     initial_cell = ledger.create_initial_cell_from_asset_vals(v0, pk)
     ledger.upload_commit_token_request(address, initial_cell, deposit_v0)
 
-def deploy_new_contract(secret_key, name='Issuer', v0=[1000,1000], types={'0':'x','1':'y'}, contract_tx_name="PADLOnChain", file_name_contract="PADLOnChain.sol"):
+def deploy_new_contract(secret_key, name='Issuer', v0=[1000,1000], types={'0':'x','1':'y'}, contract_tx_name=CONTRACT_FILE, file_name_contract=CONTRACT_FILE+".sol"):
     ledger = PADLEvmInjective(secret_key=secret_key, redeploy=True, contract_tx_name=contract_tx_name, file_name_contract=file_name_contract)
     ledger.add_participant_to_contract(ledger.account_address)
 
     bank = ledger.register_new_bank(name=name, v0=v0, types=types,
                                     secret_key=secret_key,
                                     address=ledger.account_address,
-                                    contract_address=ledger.deployed_address)
+                                    contract_address=ledger.deployed_address,
+                                    contract_tx_name=contract_tx_name,
+                                    file_name_contract=file_name_contract)
     logging.info(f"new contract deployed for participant: {bank.name}")
     return ledger.deployed_address
 
@@ -121,7 +127,7 @@ def deploy_bond_contract(issuer_name: str, issuer_private_key: str, initial_v:
     logging.info(f"new contract deployed for participant: {bank.name}")
     return bank
 
-def deploy_PADLOnChain(secret_key, name='Issuer', v0=[1000], types={'0':'x'},contract_tx_name="PADLOnChain", file_name_contract="PADLOnChain.sol", redeploy=True):
+def deploy_PADLOnChain(secret_key, name='Issuer', v0=[1000], types={'0':'x'},contract_tx_name=CONTRACT_FILE, file_name_contract=CONTRACT_FILE+".sol", redeploy=True):
     print("deploy")
     ledger = PADLEvmInjective(secret_key=secret_key, v0=v0[0], contract_tx_name=contract_tx_name, file_name_contract=file_name_contract, redeploy=redeploy)
     print("created ledger")
@@ -134,9 +140,9 @@ def deploy_PADLOnChain(secret_key, name='Issuer', v0=[1000], types={'0':'x'},con
                                    )
     return ledger.deployed_address,bank
 
-def add_participant(add, name="Issuer 0", contract_tx_name="PADLOnChain", file_name_contract="PADLOnChain.sol"):
+def add_participant(add, name="Issuer 0"):
     logging.info("adding participant")
-    issuer, issuer_bank = get_ledger_bank_padl(name, contract_tx_name, file_name_contract)
+    issuer, issuer_bank = get_ledger_bank_padl(name)
     issuer.add_participant_to_contract(add)
     issuer.send_inital_gas(add=add)
 
@@ -151,9 +157,9 @@ def check_supply(file_name):
     ledger = PadlEVM(secret_key=bank.sk, contract_address=bank.contract_address)
     return ledger.retrieve_total_supply()
 
-def check_balance(file_name,contract_tx_name="PADLOnChain", file_name_contract="PADLOnChain.sol"):
+def check_balance(file_name):
     bank = utils.load_bank_from_file(file_name)
-    ledger = PADLEvmInjective(secret_key=bank.sk_ext, contract_address=bank.contract_address,contract_tx_name=contract_tx_name,file_name_contract=file_name_contract)
+    ledger = PADLEvmInjective(secret_key=bank.sk_ext, contract_address=bank.contract_address,contract_tx_name=bank.contract_tx_name,file_name_contract=bank.file_name_contract)
 
     id = bank.id
     bals=[]
@@ -185,8 +191,8 @@ def get_state(file_name, v0=None, audit_pk=None):
         state.append(ledger.Cell(cm=c.get, token=t.get))
     return state
 
-def check_balance_by_state(file_name, contract_tx_name, file_name_contract):
-    ledger, bank = get_ledger_bank_padl(file_name, contract_tx_name, file_name_contract)
+def check_balance_by_state(file_name):
+    ledger, bank = get_ledger_bank_padl(file_name)
     id = ledger.pub_keys.index(bank.pk)
     states = ledger.retrieve_state(id)
     print(f" PADL Balance for {file_name} ")
@@ -205,7 +211,7 @@ def check_balance_by_state(file_name, contract_tx_name, file_name_contract):
 def cashout_padl_onchain(file_name, contract_tx_name, file_name_contract):
     print(f" Processing {file_name} cashout request.  Verifying balance")
     bal, pr = check_balance_by_state(file_name, contract_tx_name, file_name_contract)
-    ledger,bank = get_ledger_bank_padl(file_name, contract_tx_name="PADLOnChain", file_name_contract="PADLOnChain.sol")
+    ledger,bank = get_ledger_bank_padl(file_name, contract_tx_name=CONTRACT_FILE, file_name_contract=CONTRACT_FILE+".sol")
     ledger.cashout_padl_onchain(bal, bank.id, pr)
     bal = ledger.w3.fromWei(ledger.w3.eth.get_balance(bank.address[:-5]),'ether')
     print(f"Eth bal for {file_name} at address{bank.address[:-5]} is {bal}")
@@ -234,9 +240,9 @@ def check_balance_by_commit_token(file_name, c, t):
     print(f"balance is {bal}")
     return bal
 
-def check_all_balances_audit(file_name, ids=None, assets=None, check_match=None, contract_tx_name="PADLOnChain", file_name_contract="PADLOnChain.sol", single_index = -1, rangetx=-1):
+def check_all_balances_audit(file_name, ids=None, assets=None, check_match=None, single_index = -1, rangetx=-1):
     bank = utils.load_bank_from_file(file_name)
-    ledger = PADLEvmInjective(secret_key=bank.sk, contract_address=bank.contract_address, contract_tx_name=contract_tx_name, file_name_contract=file_name_contract)
+    ledger = PADLEvmInjective(secret_key=bank.sk, contract_address=bank.contract_address, contract_tx_name=bank.contract_tx_name, file_name_contract=bank.file_name_contract)
     zls = ledger.get_all_zerolines()
 
     bals = []
@@ -282,22 +288,22 @@ def check_all_balances_audit(file_name, ids=None, assets=None, check_match=None,
         print("-----------------------")
     return bals
 
-def get_ledger_bank_padl(file_name, contract_tx_name="PADLOnChain", file_name_contract="PADLOnChain.sol"):
+def get_ledger_bank_padl(file_name):
     bank = utils.load_bank_from_file(file_name)
     ledger = PADLEvmInjective(secret_key=bank.sk_ext,
                         contract_address=bank.contract_address,
-                        contract_tx_name=contract_tx_name,
-                        file_name_contract=file_name_contract,
+                        contract_tx_name=bank.contract_tx_name,
+                        file_name_contract=bank.file_name_contract,
                         redeploy=False)
     return ledger, bank
 
 
-def send_coins(vals: list, file_name: str, audit_pk=None, sparse_tx=False, contract_tx_name="PADLOnChain", file_name_contract="PADLOnChain.sol"):
+def send_coins(vals: list, file_name: str, audit_pk=None, sparse_tx=False, contract_tx_name=CONTRACT_FILE, file_name_contract=CONTRACT_FILE+".sol"):
     """
     To send coins to another participant, first we source the padl ledger,
     then we pull the transactions from the ledger. 
     """
-    ledger, bank = get_ledger_bank_padl(file_name, contract_tx_name, file_name_contract)
+    ledger, bank = get_ledger_bank_padl(file_name)
     ledger.pull_txs()
     tx = bank.create_asset_tx(vals_in=vals, n_banks=len(ledger.pub_keys), pub_keys=ledger.pub_keys, audit_pk=audit_pk, sparse_tx=sparse_tx)
 
@@ -311,9 +317,9 @@ def send_coins(vals: list, file_name: str, audit_pk=None, sparse_tx=False, contr
     bank.serialise()
     return tx
 
-def send_injective_tx(vals:list, file_name: str, audit_pk=None, contract_tx_name="PADLOnChain", file_name_contract="PADLOnChain.sol"):
+def send_injective_tx(vals:list, file_name: str, audit_pk=None):
     print(f"Preparing transaction")
-    ledger, bank = get_ledger_bank_padl(file_name, contract_tx_name, file_name_contract)
+    ledger, bank = get_ledger_bank_padl(file_name)
 
     bank.set_tx_type(InjectiveTxSmartContract())
     tx_solidity,tx = bank.create_asset_tx(vals=vals, ledger=ledger, pub_keys=ledger.pub_keys,audit_pk=audit_pk)
@@ -329,8 +335,8 @@ def send_injective_tx(vals:list, file_name: str, audit_pk=None, contract_tx_name
 
     return tx_solidity, tx
 
-def get_private_tx_str(pub_keys, vals, file_name, state, old_balance, audit_pk=None, contract_tx_name='PADLOnChain', file_name_contract='PADLOnChain.sol'):
-    ledger, bank = get_ledger_bank_padl(file_name, contract_tx_name, file_name_contract)
+def get_private_tx_str(pub_keys, vals, file_name, state, old_balance, audit_pk=None):
+    ledger, bank = get_ledger_bank_padl(file_name)
     ledger.pub_keys = pub_keys
     bank.set_tx_type(ERCTx())
     tx = bank.create_asset_tx(vals, ledger, state, old_balance)
@@ -341,8 +347,8 @@ def get_private_tx_str(pub_keys, vals, file_name, state, old_balance, audit_pk=N
     """
     return tx
 
-def finalize_tx(file_name, contract_tx_name="PADLOnChain", file_name_contract="PADLOnChain.sol", Issuer=False):
-    ledger, bank = get_ledger_bank_padl(file_name, contract_tx_name, file_name_contract)
+def finalize_tx(file_name, contract_tx_name=CONTRACT_FILE, file_name_contract=CONTRACT_FILE+".sol", Issuer=False):
+    ledger, bank = get_ledger_bank_padl(file_name)
     ledger.pull_txs()
 
     cmtk, tx, _ = ledger.retrieve_current_tx()
@@ -357,15 +363,15 @@ def finalize_tx(file_name, contract_tx_name="PADLOnChain", file_name_contract="P
     else:
         ledger.add_txn_to_ledger()
 
-def vote_tx(file_name, contract_tx_name="PADLOnChain", file_name_contract="PADLOnChain.sol"):
-    ledger, bank = get_ledger_bank_padl(file_name, contract_tx_name, file_name_contract)
+def vote_tx(file_name):
+    ledger, bank = get_ledger_bank_padl(file_name)
     ledger.pull_txs()
     cmtk, tx, _ = ledger.retrieve_current_tx()
     ledger.voteTxn()
 
-def add_proof(file_name, contract_tx_name="PADLOnChain", file_name_contract="PADLOnChain.sol"):
+def add_proof(file_name):
     print("add proof", file_name)
-    ledger, bank = get_ledger_bank_padl(file_name, contract_tx_name, file_name_contract)
+    ledger, bank = get_ledger_bank_padl(file_name)
     ledger.pull_txs()
     # retrieve txn
     cmtk, tx, filename = ledger.retrieve_current_tx()
