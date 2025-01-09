@@ -13,7 +13,7 @@ PADL is based on zero-knowledge proofs for inter-parties framework for exploring
 1. python > 3.8 and Rust.
 2. For testing on smart contracts: `nodejs`, and for local evm testing env., for example ganache-cli, OpenZeppelin contracts such as ERC20.
 
-### Padl Installation
+### PADL Installation
 3. run `python setup.py init`
 
 ## openzeppelin-contracts
@@ -24,8 +24,8 @@ To run the example padl_deployERC.py, need to run `python setup.py contract` to 
 
 See more examples (pyledger/examples), and tutorials under (./tutorials).
 
-## Citing PADL
-To cite PADL, please reference the (LINK HERE + BIBTEX)
+## PADL Paper
+https://arxiv.org/abs/2501.03808
 
 ## License
 PADL has a Apache v2-style license, as found in the LICENSE file.
