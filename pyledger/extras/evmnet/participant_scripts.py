@@ -3,7 +3,7 @@ GTAR - London - JPMorgan Chase """
 import zkbp
 from pyledger.extras.evmnet.contractpadl import PadlEVM
 from pyledger.extras.evmnet.injective_tx import PADLEvmInjective
-from pyledger.zkutils import r_blend, Commit, Secp256k1, curve_util
+from pyledger.zkutils import r_blend, Commit, Secp256k1, curve_util, BNCurve
 from pyledger.extras import utils
 import os
 import logging
@@ -136,8 +136,9 @@ def deploy_PADLOnChain(secret_key, name='Issuer', v0=[1000], types={'0':'x'},con
     bank = ledger.register_new_bank(name=name, v0=v0, types=types,
                                     secret_key=secret_key,
                                     address=ledger.account_address,
-                                    contract_address=ledger.deployed_address
-                                   )
+                                    contract_address=ledger.deployed_address,
+                                    contract_tx_name = contract_tx_name,
+                                    file_name_contract = file_name_contract)
     return ledger.deployed_address,bank
 
 def add_participant(add, name="Issuer 0"):
@@ -234,8 +235,8 @@ def check_balance_tx(file_name, tx):
 def check_balance_by_commit_token(file_name, c, t):
     bank = utils.load_bank_from_file(file_name)
     gh = zkbp.gen_GH()
-    cc = zkbp.from_str(Secp256k1.get_compressed_ecpoint(c[0], c[1]))
-    tc = zkbp.to_token_from_str(Secp256k1.get_compressed_ecpoint(t[0], t[1]))
+    cc = zkbp.from_str(BNCurve.get_compressed_ecpoint(c[0], c[1]))
+    tc = zkbp.to_token_from_str(BNCurve.get_compressed_ecpoint(t[0], t[1]))
     bal = zkbp.get_brut_v(cc,tc, gh, bank.sk_pk_obj, MAX)
     print(f"balance is {bal}")
     return bal
