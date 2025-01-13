@@ -67,14 +67,12 @@ contract PadlTokenBN is ERC20 {
         tempcm = bn.add(receiverCell.cm, senderCell.cm);
         h2r = geth2r(senderCell.cm, senderCell.compcm, from);
         require((tempcm.x == 0 && tempcm.y == 0), 'Proof of balance failed');
-        //require(padl.checkReceiverCell(receiverCell), 'Received cell not approved');
-        //require(padl.checkSenderCell(senderCell, from, h2r), 'Sender cell not approved');
+        require(padl.checkReceiverCell(receiverCell), 'Received cell not approved');
+        require(padl.checkSenderCell(senderCell, from, h2r), 'Sender cell not approved');
         privateBalances[to].cm = bn.add(privateBalances[to].cm, receiverCell.cm);
         privateBalances[from].cm = bn.add(privateBalances[from].cm, senderCell.cm);
         privateBalances[to].tk = bn.add(privateBalances[to].tk, receiverCell.tk);
         privateBalances[from].tk = bn.add(privateBalances[from].tk, senderCell.tk);
         return true;
     }
-
-
 }
