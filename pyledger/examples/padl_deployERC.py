@@ -53,7 +53,6 @@ tk = zkbp.to_token_from_pk(public_key, r.val)
 
 tx_str = get_private_tx_str(pub_keys, [[-2, 2]], file_name='Issuer 0', state=[cm,tk.get], old_balance=100, audit_pk=None)# contract_tx_name=contract_tx_name, file_name_contract=file_name_contract )
 
-
 url = "http://127.0.0.1:8545"
 chain_id=1337
 #local_dirname = os.path.dirname(os.path.realpath(__file__))

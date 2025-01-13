@@ -6,7 +6,7 @@ pragma solidity ^0.8.20;
 import "./ZK_proof/bn254.sol";
 import "./ZK_proof/ZKProofsBN254.sol";
 import {Bulletproof} from "./ZK_proof/RangeVerifier.sol";
-import {Rangeproof} from "./ZK_proof/RangeVerifier.sol";
+//import {Rangeproof} from "./ZK_proof/RangeVerifier.sol";
 import {ConsistencyProofBN} from "./ZK_proof/ConsistencyProofBN.sol";
 import {EquivalenceProofBN} from "./ZK_proof/EquivalenceProofBN.sol";
 //import "./ZK_proof/RangeProofVer.sol";
@@ -323,7 +323,6 @@ contract PADLOnChainBN {
         BN254Point memory tempcm = bn.add(state[allParticipants[id]][asset_id].cm, ctx[id].cm);
         h2r = bn.add(tempcm, bn.neg(ctx[id].compcm));
         require(zkp.verifyEqProof(ctx[id].peq, h2r), 'Proof of Equivalence failed');
-
          // update state
         for (uint256 p = 0; p < allParticipants.length; p++) {
             state[allParticipants[p]][asset_id].cm = bn.add(ctx[p].cm, state[allParticipants[p]][asset_id].cm);
@@ -335,5 +334,19 @@ contract PADLOnChainBN {
         }
         return true;
     }
+
+    function checkSenderCell(txcell memory ctxid, address add, BN254Point memory h2rd) public returns (bool){
+        require(zkp.verifyEqProof(ctxid.peq, h2rd), 'Proof of asset failed');
+        require(zkp.verifyConsistencyProof(ctxid.pc_), 'Proof of consistency of complimentary commit failed');
+        require(rng.verify_range_proof(ctxid.ppositive), 'Proof of positive commitment failed');
+        require(zkp.verifyConsistencyProof(ctxid.pc), 'Proof of consistency failed');
+        return true;
+    }
+
+    function checkReceiverCell(txcell memory ctx) public returns (bool) {
+        require(rng.verify_range_proof(ctx.ppositive), 'Proof of positive commitment failed');
+        return true;
+    }
+
 
 }

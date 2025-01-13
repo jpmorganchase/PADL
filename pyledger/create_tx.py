@@ -8,6 +8,10 @@ import os
 import sys
 from pathlib import Path
 
+#from pyledger.examples.padl_deployERC import pub_keys
+
+#from pyledger.ledger import MakeLedger
+
 logging.basicConfig(level=logging.WARN, format='%(message)s')
 
 path = os.path.realpath(__file__)
@@ -284,7 +288,6 @@ class ERCTx(InjectiveTx):
         cell.token = token.get
         cell.P_C = ProofGenerator().generate_proof_of_consistency(cm.get,token.get,[v[0][1],r],ledger.pub_keys[1])
         cell.P_C = InjectiveUtils.format_consistency_proof(cell.P_C, cell.cm, cell.token, ledger.pub_keys[1])
-
         c,t = state # id = 0
         old_balance = self.bank.get_balance_from_contract(c, t)
         new_balance = old_balance + v[0][0] # asset = 0 id = 0
@@ -305,15 +308,16 @@ class ERCTx(InjectiveTx):
                                                                 ledger.pub_keys[0])
         owncell.P_C = InjectiveUtils.format_consistency_proof(owncell.P_C, owncell.cm, owncell.token, ledger.pub_keys[0])
 
+        r_comp = r_blend()
 
-        #rpr, token, cm, r, eqpr, consistency_pr_= ProofGenerator().generate_range_proof_positive_commitment(v[0][0], 0, ledger.pub_keys[0], owncell, state, old_balance, 0)
-        prs, token_, cm_, r = ProofGenerator().generate_range_proof_positive_commitment(new_balance, id=0, ledger=ledger, smart_contract=True)
-        rpr = ProofGenerator().generate_proof_of_asset(v[0][0], r_own, smart_contract=True)
+        rpr = ProofGenerator().generate_proof_of_asset(new_balance, r_comp, smart_contract=True)
+        cm_ = zkbp.commit(new_balance, r_comp.get(), gh)
+        token_ = zkbp.to_token_from_pk(ledger.pub_keys[0], r_comp.get())
         owncell.cm_ = cm_.get
         owncell.token_ = token_.get
-        consistency_pr_ = ProofGenerator().generate_proof_of_consistency(owncell.cm,
-                                                                     owncell.token,
-                                                                     [v[0][0], r_own],
+        consistency_pr_ = ProofGenerator().generate_proof_of_consistency(owncell.cm_,
+                                                                     owncell.token_,
+                                                                     [new_balance, r_comp],
                                                                      ledger.pub_keys[0])
         owncell.P_C_ = InjectiveUtils.format_consistency_proof(consistency_pr_, owncell.cm_, owncell.token_, ledger.pub_keys[0])
         sum_com_minus_pcm = Commit.from_str(sum_commit.get) - Commit.from_str(cm_.get)
