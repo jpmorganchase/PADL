@@ -14,10 +14,75 @@ path = os.path.realpath(__file__)
 parent_dir = str(Path(path).parents[2])
 main_dir = str(Path(path).parents[2])
 sys.path.append(parent_dir)
-
 from pyledger.extras.evmnet.participant_scripts import *
-
 from pyledger.extras.evmnet.participant_scripts import get_private_tx_str
+
+
+url = "http://127.0.0.1:8545"
+chain_id = 1337
+local_dirname = "/Users/yashsatsangi/Documents/code/PADL/PADL-latest/padl_private/pyledger/"
+w3 = Web3(Web3.HTTPProvider(url, request_kwargs={'timeout': 600000}))
+
+
+def send_tx_from_call(private_key, transaction):
+    signed_txn = w3.eth.account.sign_transaction(transaction, private_key=private_key)
+    print("deploying contract")
+    tx_hash = w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+    tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    return tx_receipt
+
+
+def compile_contract(contract_location, contract_tx_name, file_name_contract):
+
+    with open(main_dir + f"/pyledger/contracts/{contract_location}", "r") as f:
+        contract = f.read()
+
+    # complie our solidity
+    compiled_sol = compile_standard(
+        {
+            "language": "Solidity",
+            "sources": {f"{file_name_contract}": {"content": contract}},
+            "settings": {
+                "optimizer": {
+                    "enabled": True,
+                    "runs": 100,
+                    "details": {
+                        "peephole": True,
+                        "inliner": True,
+                        "jumpdestRemover": True,
+                        "orderLiterals": True,
+                        "deduplicate": True,
+                        "cse": True,
+                        "constantOptimizer": True,
+                        "yul": True,
+                    }
+                },
+                "viaIR": True,
+                "evmVersion": "london",
+
+                "outputSelection": {
+                    "*": {
+                        "*": ["abi", "metadata", "evm.bytecode", "evm.sourceMap"]
+                    }
+                }
+            },
+        },
+        solc_version="0.8.28",
+        allow_paths=os.path.join(local_dirname, "contracts"),
+        base_path=os.path.join(local_dirname, "contracts")
+    )
+
+    with open("compiled_code.json", "w") as f:
+        json.dump(compiled_sol, f)
+
+    bytecode = compiled_sol["contracts"][file_name_contract][contract_tx_name]["evm"][
+        "bytecode"
+    ]["object"]
+
+    abi = compiled_sol["contracts"][file_name_contract][contract_tx_name]["abi"]
+    return bytecode, abi
+    # '===========COMPILE DONE=============='
+
 
 account_address = '0xFE3B557E8Fb62b89F4916B721be55cEb828dBd73'
 example_private_key = '0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63'
@@ -27,15 +92,38 @@ account_address2 = "0x8c171946c84D214e9F54fF22F515347dA4d78F7B"
 account_address = Web3.toChecksumAddress(account_address)
 account_address2 = Web3.toChecksumAddress(account_address2)
 LocalAccount = Account.from_key(example_private_key)
-contract_tx_name="PADLOnChainBN"
-file_name_contract="PADLOnChainBN.sol"
+#contract_tx_name="PADLOnChainBN"
+#file_name_contract="PADLOnChainBN.sol"
 
-contract_address,bank = deploy_PADLOnChain(example_private_key, contract_tx_name=contract_tx_name, file_name_contract=file_name_contract)
+##### DEPLOY BN #######
 
+bytecode, abi = compile_contract("ZK_proof/bn254.sol", "BN254", "BN254.sol")
+bn = w3.eth.contract(abi=abi, bytecode=bytecode)
+nonce = w3.eth.get_transaction_count(account_address)
+transaction = bn.constructor().buildTransaction(
+    {"chainId": chain_id, "from": account_address, "nonce": nonce, 'gas': 100000000} )
+tx_receipt = send_tx_from_call(example_private_key, transaction)
+_bnaddress = tx_receipt.contractAddress
+
+
+
+##### Deploy PadlOnChain
+#bytecode, abi = compile_contract("PADLOnChainBN.sol", "PADLOnChainBN", "PADLOnChainBN.sol")
+#padlonchain = w3.eth.contract(abi=abi, bytecode=bytecode)
+#nonce = w3.eth.get_transaction_count(account_address)
+#transaction = padlonchain.constructor(100).buildTransaction(
+#    {"chainId":chain_id, "from":account_address, "nonce":nonce, 'gas': 100000000}
+#)
+#tx_receipt = send_tx_from_call(example_private_key, transaction)
+#contract_address = tx_receipt.contractAddress
+
+contract_address,bank = deploy_PADLOnChain(example_private_key, contract_tx_name="PADLOnChainBN", file_name_contract="PADLOnChainBN.sol")
 account_dict = create_account(contract_address=contract_address)
 add_participant(account_dict["address"])#, "Issuer 0", contract_tx_name=contract_tx_name, file_name_contract=file_name_contract)
 publickey_bank = account_dict['public_key']
 print('publickey_bank',publickey_bank)
+
+
 
 bank=register_padl('Bank', account_dict, v0=[0,0] , types={'0': 'cash-token', '1': 'fund-token'})
 
@@ -53,59 +141,8 @@ tk = zkbp.to_token_from_pk(public_key, r.val)
 
 tx_str = get_private_tx_str(pub_keys, [[-2, 2]], file_name='Issuer 0', state=[cm,tk.get], old_balance=100, audit_pk=None)# contract_tx_name=contract_tx_name, file_name_contract=file_name_contract )
 
-url = "http://127.0.0.1:8545"
-chain_id=1337
-#local_dirname = os.path.dirname(os.path.realpath(__file__))
-local_dirname = "/Users/yashsatsangi/Documents/code/PADL/PADL-latest/padl_private/pyledger/"
-w3 = Web3(Web3.HTTPProvider(url, request_kwargs={'timeout': 600000}))
 
-with open(main_dir+"/pyledger/contracts/PadlTokenBN.sol", "r") as f:
-    erc_padl_contract = f.read()
-# complie our solidity
-compiled_sol = compile_standard(
-            {
-                "language": "Solidity",
-                "sources": {"PadlTokenBN.sol": {"content": erc_padl_contract}},
-                "settings": {
-                    "optimizer":{
-                        "enabled":True,
-                            "runs": 100,
-                            "details": {
-                                "peephole": True,
-                                "inliner": True,
-                                "jumpdestRemover": True,
-                                "orderLiterals": True,
-                                "deduplicate": True,
-                                "cse": True,
-                                "constantOptimizer": True,
-                                "yul": True,
-                            }
-                    },
-                    "viaIR": True,
-                    "evmVersion": "london",
-
-                    "outputSelection": {
-                        "*": {
-                            "*": ["abi", "metadata", "evm.bytecode", "evm.sourceMap"]
-                        }
-                    }
-                },
-            },
-    solc_version="0.8.28",
-    allow_paths=os.path.join(local_dirname, "contracts"),
-    base_path=os.path.join(local_dirname, "contracts")
-)
-
-
-with open("compiled_code.json", "w") as f:
-    json.dump(compiled_sol,f)
-
-bytecode = compiled_sol["contracts"]["PadlTokenBN.sol"]["PadlTokenBN"]["evm"][
-    "bytecode"
-]["object"]
-
-abi = compiled_sol["contracts"]["PadlTokenBN.sol"]["PadlTokenBN"]["abi"]
-
+bytecode, abi = compile_contract("PadlTokenBN.sol", "PadlTokenBN", "PadlTokenBN.sol")
 #'===========COMPILE DONE=============='
 StoreTxn = w3.eth.contract(abi=abi, bytecode=bytecode)
 
@@ -120,7 +157,7 @@ print('c', c)
 print('t', t)
 #transaction = StoreTxn.constructor(100, c, t).buildTransaction(
 
-transaction = StoreTxn.constructor(100, c, t).buildTransaction(
+transaction = StoreTxn.constructor(100, c, t, contract_address, _bnaddress).buildTransaction(
     {"chainId": chain_id,
      "from": account_address, "nonce": nonce, 'gas': 100000000}
 )
@@ -154,6 +191,7 @@ transaction = contract.functions.privateTransfer(account_address, account_addres
 signed_txn = w3.eth.account.sign_transaction(transaction,private_key=private_key)
 tx_hash = w3.eth.send_raw_transaction(signed_txn.rawTransaction)
 tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+print(tx_receipt)
 print(contract.functions.balanceOf(account_address2).call())
 
 

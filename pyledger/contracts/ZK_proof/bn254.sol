@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-struct BN254Point{
-    uint256 x;
-    uint256 y;
-}
+import "../Interfaces/BNInterface.sol";
 
 contract BN254 {
 

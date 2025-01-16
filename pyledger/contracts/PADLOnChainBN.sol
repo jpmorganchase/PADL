@@ -5,20 +5,21 @@ pragma solidity ^0.8.20;
 
 import "./ZK_proof/bn254.sol";
 import "./ZK_proof/ZKProofsBN254.sol";
+import "./Interfaces/PADLOnChainInterface.sol";
 import {Bulletproof} from "./ZK_proof/RangeVerifier.sol";
-//import {Rangeproof} from "./ZK_proof/RangeVerifier.sol";
+import {Rangeproof} from "./ZK_proof/RangeVerifier.sol";
 import {ConsistencyProofBN} from "./ZK_proof/ConsistencyProofBN.sol";
 import {EquivalenceProofBN} from "./ZK_proof/EquivalenceProofBN.sol";
 //import "./ZK_proof/RangeProofVer.sol";
 
 contract PADLOnChainBN {
-    struct cmtk {
-        BN254Point cm;
-        BN254Point tk;
-    }
+    //struct cmtk {
+    //    BN254Point cm;
+    //    BN254Point tk;
+    //}
     uint8 public constant totalAsset= 8;
     uint8 public constant default_asset_id = 0;
-    cmtk[] public cur_asset_commits_tokens;
+    PADLOnChainInterface.cmtk[] public cur_asset_commits_tokens;
 
     uint256 constant gy = 0x211f2c237d907e6e11073f667fb026085665bb1ba108518ddd23bebfbe896ca5;
     uint256 constant gx = 0x2f9fb7e98cc14aced65e3f4e0871e0a012a699c8f474e2286fce8b97adfad91a;
@@ -27,11 +28,11 @@ contract PADLOnChainBN {
 
     address Issuer;
     uint256 totalSupply;
-    mapping(address => cmtk[]) state; // state of the contract
-    mapping(address => cmtk[]) tempzl;
+    mapping(address => PADLOnChainInterface.cmtk[]) state; // state of the contract
+    mapping(address => PADLOnChainInterface.cmtk[]) tempzl;
     mapping(address => uint256) allids;
     address[] public allParticipants;
-    txcell[] public currenttx;
+    PADLOnChainInterface.txcell[] public currenttx;
     BN254Point public newcm;
     BN254Point public newtk;
     BN254Point public sumcm;
@@ -41,11 +42,11 @@ contract PADLOnChainBN {
     BN254Point public updatedstatetk;
     string public identifier;
 
-    cmtk[] public intzl;
+    PADLOnChainInterface.cmtk[] public intzl;
     uint256 public sval = 10;
 
-    cmtk cmtk_temp;
-    mapping(address => cmtk) public zlnotuseful;
+    PADLOnChainInterface.cmtk cmtk_temp;
+    mapping(address => PADLOnChainInterface.cmtk) public zlnotuseful;
     mapping(address => string) public zl;
     mapping(address => string) public reqs;
     mapping(address => uint) public reqs_amounts;
@@ -53,18 +54,19 @@ contract PADLOnChainBN {
     mapping(address => string) public zkledgerPks;
     mapping(address => bool) public participants;
 
-    cmtk[][] public commitsTokens;
+    PADLOnChainInterface.cmtk[][] public commitsTokens;
     bool public majorityvotes;
     string[] public ledger; // ledger as arrays of hashes
     uint8 public constant preg = 0x2;
     string public gov_rules='';
-
+    address bnaddress;
 
     ZKProofsBN254 public zkp = new ZKProofsBN254();
 
     constructor(uint256 _totalSupply) {
         Issuer = msg.sender;
         totalSupply = _totalSupply;
+        //bnaddress = _bnaddress;
     }
 
     /// @dev modifier for functionalities only available to Issuer
@@ -87,6 +89,7 @@ contract PADLOnChainBN {
 
     /// @dev PADL transaction structure consists of a commitment, token, complimentary commitment, complimentary token,
     /// @dev proof of positive commitment, range proof, equivalence proof.
+    /*
     struct txcell {
         BN254Point cm;
         BN254Point tk;
@@ -97,6 +100,7 @@ contract PADLOnChainBN {
         ConsistencyProofBN.consistencyProofSolR pc_;
         Rangeproof ppositive;
     }
+    */
 
     function isPermitted(address _add) public returns (bool){
         return participants[_add];
@@ -185,7 +189,7 @@ contract PADLOnChainBN {
         return ledger.length;
     }
 
-        function storeIntCMTK(cmtk[][] memory _p) public{
+        function storeIntCMTK(PADLOnChainInterface.cmtk[][] memory _p) public{
         delete commitsTokens;
         for (uint256 temp_asset_index = 0; temp_asset_index < _p.length; temp_asset_index++){
 
@@ -207,7 +211,7 @@ contract PADLOnChainBN {
     }
 
 
-    function retrieveCommitsTokens() public view returns(cmtk[][] memory){
+    function retrieveCommitsTokens() public view returns(PADLOnChainInterface.cmtk[][] memory){
         return commitsTokens;
     }
 
@@ -288,7 +292,7 @@ contract PADLOnChainBN {
 
     /// @dev function to store zero line in a temporary mapping that is later changed to state once the deposit is received
     /// @param zls commitment-token tuple
-    function addZeroLineToState(cmtk [] memory zls) public {
+    function addZeroLineToState(PADLOnChainInterface.cmtk [] memory zls) public {
          //tempzl[msg.sender] = zls;
          for (uint256 index=0;index<zls.length;index++){
              state[msg.sender].push(zls[index]);
@@ -298,11 +302,11 @@ contract PADLOnChainBN {
     /// @dev function to retrieve state of a participant
     /// @param p participant id
     /// @return state of a participant on the contract (commitment-token tuple)
-    function retrieveStateId(uint256 p) public returns (cmtk[] memory){
+    function retrieveStateId(uint256 p) public returns (PADLOnChainInterface.cmtk[] memory){
         return (state[allParticipants[p]]);
     }
 
-    function processTx(txcell[] memory ctx, uint256 asset_id) public onlyByParticipants returns (bool) {
+    function processTx(PADLOnChainInterface.txcell[] memory ctx, uint256 asset_id) public onlyByParticipants returns (bool) {
         require(ctx.length == allParticipants.length, "Length of transaction not equal to length of participants");
         // proof of balance
         BN254Point memory sum_cm = ctx[0].cm;
@@ -335,7 +339,7 @@ contract PADLOnChainBN {
         return true;
     }
 
-    function checkSenderCell(txcell memory ctxid, address add, BN254Point memory h2rd) public returns (bool){
+    function checkSenderCell(PADLOnChainInterface.txcell memory ctxid, address add, BN254Point memory h2rd) public returns (bool){
         require(zkp.verifyEqProof(ctxid.peq, h2rd), 'Proof of asset failed');
         require(zkp.verifyConsistencyProof(ctxid.pc_), 'Proof of consistency of complimentary commit failed');
         require(rng.verify_range_proof(ctxid.ppositive), 'Proof of positive commitment failed');
@@ -343,7 +347,7 @@ contract PADLOnChainBN {
         return true;
     }
 
-    function checkReceiverCell(txcell memory ctx) public returns (bool) {
+    function checkReceiverCell(PADLOnChainInterface.txcell memory ctx) public returns (bool) {
         require(rng.verify_range_proof(ctx.ppositive), 'Proof of positive commitment failed');
         return true;
     }

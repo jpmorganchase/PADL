@@ -1,26 +1,28 @@
 pragma solidity ^0.8.28;
 
 import "./ERC/ERC20.sol";
-import "./ZK_proof/bn254.sol";
+import "../Interfaces/BNInterface.sol";
 import "./ZK_proof/ZKProofsBN254.sol";
-import "./PADLOnChainBN.sol";
+import "./Interfaces/PADLOnChainInterface.sol";
 /// @title Private and auditable transaction via on-chain verification
 /// @author Applied research, Global Tech., JPMorgan Chase, London
 /// @notice This is an code for research and experimentation.
 
 contract PadlTokenBN is ERC20 {
-    BN254 public bn = new BN254();
+    //BN254 public bn = new BN254();
+    BNInterface public bn;
     ZKProofsBN254 public zkp = new ZKProofsBN254();
-
+    PADLOnChainInterface padl;
     uint256 public sval = 10;
-    PADLOnChainBN public padl = new PADLOnChainBN(sval);
 
     mapping(address => uint256) internal _balances;
-    mapping(address => PADLOnChainBN.cmtk) internal privateBalances;
+    mapping(address => PADLOnChainInterface.cmtk) internal privateBalances;
     BN254Point internal h2r;
-    PADLOnChainBN.txcell storecell;
+    PADLOnChainInterface.txcell storecell;
 
-    constructor(uint256 initialSupply, BN254Point memory cm, BN254Point memory tk) ERC20("PadlToken", "PDL"){
+    constructor(uint256 initialSupply, BN254Point memory cm, BN254Point memory tk, address _padlInterfaceAdd, address _bnaddress) ERC20("PadlToken", "PDL"){
+        padl = PADLOnChainInterface(_padlInterfaceAdd);
+        bn = BNInterface(_bnaddress);
         _mint(msg.sender,initialSupply);
         privateBalances[msg.sender].cm.x = cm.x;
         privateBalances[msg.sender].cm.y = cm.y;
@@ -32,15 +34,15 @@ contract PadlTokenBN is ERC20 {
         return (privateBalances[from].cm.x, privateBalances[from].cm.y, privateBalances[from].tk.x, privateBalances[from].tk.y);
     }
 
-    function storeCell(PADLOnChainBN.txcell[] memory storecelltemp) public {
+    function storeCell(PADLOnChainInterface.txcell[] memory storecelltemp) public {
         storecell = storecelltemp[0];
     }
 
-    function privateTransfer(address from, address to, PADLOnChainBN.txcell memory senderCell, PADLOnChainBN.txcell memory receiverCell) public returns (bool){
+    function privateTransfer(address from, address to, PADLOnChainInterface.txcell memory senderCell, PADLOnChainInterface.txcell memory receiverCell) public returns (bool){
         return _privateUpdate(from, to, senderCell,receiverCell);
     }
 
-    function transfer(address to, uint256 amount, PADLOnChainBN.txcell memory senderCell, PADLOnChainBN.txcell memory receiverCell) public returns (bool) {
+    function transfer(address to, uint256 amount, PADLOnChainInterface.txcell memory senderCell, PADLOnChainInterface.txcell memory receiverCell) public returns (bool) {
         privateTransfer(msg.sender, to, senderCell, receiverCell);
         _update(msg.sender, to, amount);
         return true;
@@ -62,7 +64,7 @@ contract PadlTokenBN is ERC20 {
         return bn.add(tempcmd, bn.neg(compcm));
     }
 
-    function _privateUpdate(address from, address to, PADLOnChainBN.txcell memory senderCell, PADLOnChainBN.txcell memory receiverCell) internal returns (bool){
+    function _privateUpdate(address from, address to, PADLOnChainInterface.txcell memory senderCell, PADLOnChainInterface.txcell memory receiverCell) internal returns (bool){
         BN254Point memory tempcm ;
         tempcm = bn.add(receiverCell.cm, senderCell.cm);
         h2r = geth2r(senderCell.cm, senderCell.compcm, from);

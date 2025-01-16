@@ -2,32 +2,21 @@
 pragma solidity ^0.8.19;
 
 import "./bn254.sol";
-
-struct Rangeproof{
-    BN254Point A;
-    BN254Point S;
-    BN254Point T1;
-    BN254Point T2;
-    uint256 tau_x;
-    uint256 miu;
-    uint256 tx;
-    uint256 a_tag;
-    uint256 b_tag;
-    BN254Point G;
-    BN254Point H;
-    BN254Point Com;
-    BN254Point[5] L;
-    BN254Point[5] R;
-    BN254Point[32] g_vec; 
-    BN254Point[32] h_vec;
-    // BN254Point[32] yi_vec;
-}
+//import  "../Interfaces/BNInterface.sol";
+import "../Interfaces/RangeProofInterface.sol";
+//import {BN254} from "./bn254.sol";
 
 
 contract Bulletproof {
+    //BNInterface bn254 ;
+    //constructor(){
+        //bn254 = BNInterface(_bnaddress);
+    //}
+
+    BN254 bn254 = new BN254();
+
     // State variable to store a number
     uint256 public num;
-    BN254 public bn254= new BN254();
     uint32 zerobytes = 0x00;
 
     uint256 gx = 0x01;
@@ -56,6 +45,7 @@ contract Bulletproof {
         // return  abi.encodePacked(b, zerobyte,zerobyte,zerobyte,zerobyte);
     }
 
+   /*
    function emptytest(BN254Point calldata point1, uint256 scalar) public returns (BN254Point memory){
         return point1;
     }
@@ -74,7 +64,7 @@ contract Bulletproof {
     function multest2(BN254Point calldata point1, uint256 scalar) public returns (BN254Point memory){
         return bn254.mul(bn254.mul(point1, scalar),scalar);
     }
-
+    */
     function iterate(uint256 step) internal returns (uint256[bits_length] memory arr){
         arr[0] = 1;
         for (uint8 counter=1; counter< bits_length; counter++){
