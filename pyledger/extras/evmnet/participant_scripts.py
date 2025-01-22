@@ -99,6 +99,8 @@ def request_token_commit(file_name, address, pk, deposit_v0, v0, contract_tx_nam
     ledger.upload_commit_token_request(address, initial_cell, deposit_v0)
 
 def deploy_new_contract(secret_key, name='Issuer', v0=[1000,1000], types={'0':'x','1':'y'}, contract_tx_name=CONTRACT_FILE, file_name_contract=CONTRACT_FILE+".sol"):
+
+    #ledger = PADLEvmInjective(secret_key=secret_key, redeploy=True)
     ledger = PADLEvmInjective(secret_key=secret_key, redeploy=True, contract_tx_name=contract_tx_name, file_name_contract=file_name_contract)
     ledger.add_participant_to_contract(ledger.account_address)
 
@@ -110,6 +112,8 @@ def deploy_new_contract(secret_key, name='Issuer', v0=[1000,1000], types={'0':'x
                                     file_name_contract=file_name_contract)
     logging.info(f"new contract deployed for participant: {bank.name}")
     return ledger.deployed_address
+
+
 
 def deploy_bond_contract(issuer_name: str, issuer_private_key: str, initial_v: 
                          list=[1000,1000], types: dict={'0':'x','1':'y'}):
@@ -139,7 +143,7 @@ def deploy_PADLOnChain(secret_key, name='Issuer', v0=[1000], types={'0':'x'},con
                                     contract_address=ledger.deployed_address,
                                     contract_tx_name = contract_tx_name,
                                     file_name_contract = file_name_contract)
-    return ledger.deployed_address,bank
+    return ledger,bank
 
 def add_participant(add, name="Issuer 0"):
     logging.info("adding participant")
@@ -327,11 +331,10 @@ def send_injective_tx(vals:list, file_name: str, audit_pk=None):
     
     proof_hash = ledger.store_proofs_gkp(tx)
     nonce = ledger.w3.eth.get_transaction_count(ledger.account_address)
-    fn_call = ledger.testnet_dict['contract_obj'].functions.addstorageidentifier(proof_hash).buildTransaction({"chainId":ledger.chain, "from":ledger.account_address, "nonce":nonce, "gas":2000000})
+    fn_call = ledger.testnet_dict['contract_obj'].functions.addstorageidentifier(proof_hash).buildTransaction({"chainId":ledger.chain, "from":ledger.account_address, "nonce":nonce, "gas":2000000000})
     tx_receipt = ledger.send_txn_from_fn_call(fn_call)
     for a, txa in enumerate(tx_solidity):
-        print("sending transaction")   
-
+        print("sending transaction")
         ledger.send_injective_txn_padlonchain(txa,asset_id=a)
 
     return tx_solidity, tx
