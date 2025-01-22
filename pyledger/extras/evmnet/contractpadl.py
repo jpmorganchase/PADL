@@ -10,6 +10,7 @@ from web3 import Web3
 import time
 
 from pathlib import Path
+
 path = os.path.realpath(__file__)
 parent_dir = str(Path(path).parents[3])
 main_dir = str(Path(path).parents[2])
@@ -53,11 +54,13 @@ class PadlEVM(EvmLedger):
 
         self.attached_pk = curve_util.to_pk(secret_key)
         if redeploy:
-            self.deploy(v0, recompile=True)
+            #self.deploy(v0)
+            self.deploy_padlbn_onchain(v0)
         else:
             if not contract_address:
                 NotImplementedError('Need contract address or set redeploy=True')
             self.deployed_address= contract_address
+
         
         self.testnet_dict = self.connect_to_evm()
         self.pub_keys = self.get_all_pks()

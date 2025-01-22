@@ -3,11 +3,15 @@
 /// @notice This is an code for research and experimentation.
 pragma solidity ^0.8.20;
 
-import "../ZK_proof/bn254.sol";
-import {Bulletproof} from "../ZK_proof/RangeVerifier.sol";
-import {ConsistencyProofBN} from "../ZK_proof/ConsistencyProofBN.sol";
-import {EquivalenceProofBN} from "../ZK_proof/EquivalenceProofBN.sol";
-import {Rangeproof} from "../ZK_proof/RangeVerifier.sol";
+//import "../ZK_proof/bn254.sol";
+//import {Bulletproof} from "../ZK_proof/RangeVerifier.sol";
+//import {ConsistencyProofBN} from "../ZK_proof/ConsistencyProofBN.sol";
+//import {EquivalenceProofBN} from "../ZK_proof/EquivalenceProofBN.sol";
+//import {Rangeproof} from "../ZK_proof/RangeVerifier.sol";
+import "../Interfaces/BNInterface.sol";
+import "../Interfaces/RangeProofInterface.sol";
+import "../Interfaces/ConsistencyProofInterface.sol";
+import "../Interfaces/EquivalenceProofInterface.sol";
 
 
 abstract contract PADLOnChainInterface {
@@ -21,9 +25,9 @@ abstract contract PADLOnChainInterface {
         BN254Point tk;
         BN254Point compcm;
         BN254Point comptk;
-        EquivalenceProofBN.eqProofSolR peq;
-        ConsistencyProofBN.consistencyProofSolR pc;
-        ConsistencyProofBN.consistencyProofSolR pc_;
+        eqProofSolR peq;
+        consistencyProofSolR pc;
+        consistencyProofSolR pc_;
         Rangeproof ppositive;
     }
 

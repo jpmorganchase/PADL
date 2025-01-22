@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "./bn254.sol";
-//import  "../Interfaces/BNInterface.sol";
+//import "./bn254.sol";
+import  "../Interfaces/BNInterface.sol";
 import "../Interfaces/RangeProofInterface.sol";
+
 //import {BN254} from "./bn254.sol";
+contract Bulletproof is RangeProofInterface {
+    address _bnaddress;
+    BNInterface bn254;
+    constructor(address _bnaddress){
+        bn254 = BNInterface(_bnaddress);
+    }
 
-
-contract Bulletproof {
-    //BNInterface bn254 ;
-    //constructor(){
-        //bn254 = BNInterface(_bnaddress);
-    //}
-
-    BN254 bn254 = new BN254();
+    //BN254 bn254 = new BN254();
 
     // State variable to store a number
     uint256 public num;
@@ -104,7 +104,7 @@ contract Bulletproof {
     }
 
 
-    function verify_range_proof(Rangeproof calldata proof) public returns (bool){
+    function verify_range_proof(Rangeproof calldata proof) public override returns (bool){
         bytes memory b = "";
         b = pushPointToHash(b, proof.A);
         uint256 y = closeHash(pushPointToHash(b, proof.S));

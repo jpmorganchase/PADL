@@ -2,7 +2,6 @@ pragma solidity ^0.8.28;
 
 import "./ERC/ERC20.sol";
 import "../Interfaces/BNInterface.sol";
-import "./ZK_proof/ZKProofsBN254.sol";
 import "./Interfaces/PADLOnChainInterface.sol";
 /// @title Private and auditable transaction via on-chain verification
 /// @author Applied research, Global Tech., JPMorgan Chase, London
@@ -11,7 +10,6 @@ import "./Interfaces/PADLOnChainInterface.sol";
 contract PadlTokenBN is ERC20 {
     //BN254 public bn = new BN254();
     BNInterface public bn;
-    ZKProofsBN254 public zkp = new ZKProofsBN254();
     PADLOnChainInterface padl;
     uint256 public sval = 10;
 
@@ -19,15 +17,30 @@ contract PadlTokenBN is ERC20 {
     mapping(address => PADLOnChainInterface.cmtk) internal privateBalances;
     BN254Point internal h2r;
     PADLOnChainInterface.txcell storecell;
+    address eqaddress;
+    address consaddress;
 
-    constructor(uint256 initialSupply, BN254Point memory cm, BN254Point memory tk, address _padlInterfaceAdd, address _bnaddress) ERC20("PadlToken", "PDL"){
-        padl = PADLOnChainInterface(_padlInterfaceAdd);
-        bn = BNInterface(_bnaddress);
-        _mint(msg.sender,initialSupply);
-        privateBalances[msg.sender].cm.x = cm.x;
-        privateBalances[msg.sender].cm.y = cm.y;
-        privateBalances[msg.sender].tk.x = tk.x;
-        privateBalances[msg.sender].tk.y = tk.y;
+    struct initargs {
+        uint256 initialSupply;
+        BN254Point cm;
+        BN254Point tk;
+        address _padlInterfaceAdd;
+        address _bnaddress;
+        address _eqaddress;
+        address _consaddress;
+    }
+    //ZKProofsBN254 public zkp = new ZKProofsBN254(eqaddress, consaddress);
+
+    constructor(initargs memory init) ERC20("PadlToken", "PDL"){
+        padl = PADLOnChainInterface(init._padlInterfaceAdd);
+        bn = BNInterface(init._bnaddress);
+        _mint(msg.sender, init.initialSupply);
+        eqaddress = init._eqaddress;
+        consaddress = init._consaddress;
+        privateBalances[msg.sender].cm.x = init.cm.x;
+        privateBalances[msg.sender].cm.y = init.cm.y;
+        privateBalances[msg.sender].tk.x = init.tk.x;
+        privateBalances[msg.sender].tk.y = init.tk.y;
     }
 
     function privateBalanceOf(address from) public view returns(uint256, uint256, uint256, uint256){

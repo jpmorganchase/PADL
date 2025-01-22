@@ -5,8 +5,6 @@ pragma solidity ^0.8.19;
 import  "../Interfaces/BNInterface.sol";
 //import {BN254} from "./bn254.sol";
 
-
-
 struct Rangeproof{
     BN254Point A;
     BN254Point S;
@@ -29,5 +27,4 @@ struct Rangeproof{
 
 abstract contract RangeProofInterface {
     function verify_range_proof(Rangeproof calldata proof) public virtual returns (bool);
-
 }

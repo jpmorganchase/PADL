@@ -3,20 +3,31 @@
 /// @notice This is an code for research and experimentation.
 pragma solidity ^0.8.20;
 
-import "./ZK_proof/bn254.sol";
-import "./ZK_proof/ZKProofsBN254.sol";
+//import "./ZK_proof/bn254.sol";
+//import {ConsistencyProofBN} from "./ZK_proof/ConsistencyProofBN.sol";
+//import {EquivalenceProofBN} from "./ZK_proof/EquivalenceProofBN.sol";
+
 import "./Interfaces/PADLOnChainInterface.sol";
-import {Bulletproof} from "./ZK_proof/RangeVerifier.sol";
-import {Rangeproof} from "./ZK_proof/RangeVerifier.sol";
-import {ConsistencyProofBN} from "./ZK_proof/ConsistencyProofBN.sol";
-import {EquivalenceProofBN} from "./ZK_proof/EquivalenceProofBN.sol";
+//import {Bulletproof} from "./ZK_proof/RangeVerifier.sol";
+//import {Rangeproof} from "./ZK_proof/RangeVerifier.sol";
+import "../Interfaces/RangeProofInterface.sol";
+import "../Interfaces/BNInterface.sol";
+import "../Interfaces/ConsistencyProofInterface.sol";
+import "../Interfaces/EquivalenceProofInterface.sol";
 //import "./ZK_proof/RangeProofVer.sol";
 
-contract PADLOnChainBN {
-    //struct cmtk {
-    //    BN254Point cm;
-    //    BN254Point tk;
-    //}
+contract PADLOnChainBN is PADLOnChainInterface{
+
+    address bnaddress;
+    address eqaddress;
+    address consaddress;
+
+    address rngaddress;
+    BNInterface bn;
+    EquivalenceProofInterface eqp;
+    ConsistencyProofInterface csp;
+    RangeProofInterface rng;
+
     uint8 public constant totalAsset= 8;
     uint8 public constant default_asset_id = 0;
     PADLOnChainInterface.cmtk[] public cur_asset_commits_tokens;
@@ -59,14 +70,27 @@ contract PADLOnChainBN {
     string[] public ledger; // ledger as arrays of hashes
     uint8 public constant preg = 0x2;
     string public gov_rules='';
-    address bnaddress;
 
-    ZKProofsBN254 public zkp = new ZKProofsBN254();
+    //BN254 public bn = new BN254();
 
-    constructor(uint256 _totalSupply) {
+    BN254Point public h2r;
+
+    struct initargs {
+        uint256 _totalSupply;
+        address _bnaddress;
+        address _eqaddress;
+        address _consaddress;
+        address _rngaddress;
+    }
+
+    constructor(initargs memory init){
+        bn = BNInterface(init._bnaddress);
+        bnaddress = init._bnaddress;
+        eqp = EquivalenceProofInterface(init._eqaddress);
+        csp = ConsistencyProofInterface(init._consaddress);
         Issuer = msg.sender;
-        totalSupply = _totalSupply;
-        //bnaddress = _bnaddress;
+        totalSupply = init._totalSupply;
+        rng = RangeProofInterface(init._rngaddress);
     }
 
     /// @dev modifier for functionalities only available to Issuer
@@ -80,12 +104,6 @@ contract PADLOnChainBN {
         require(isPermitted(msg.sender), "Only participants can make txns");
         _;
     }
-
-    BN254 public bn = new BN254();
-    EquivalenceProofBN public eqp = new EquivalenceProofBN();
-    ConsistencyProofBN public csp = new ConsistencyProofBN();
-    Bulletproof public rng = new Bulletproof();
-    BN254Point public h2r;
 
     /// @dev PADL transaction structure consists of a commitment, token, complimentary commitment, complimentary token,
     /// @dev proof of positive commitment, range proof, equivalence proof.
@@ -102,7 +120,7 @@ contract PADLOnChainBN {
     }
     */
 
-    function isPermitted(address _add) public returns (bool){
+    function isPermitted(address _add) public override returns (bool){
         return participants[_add];
     }
 
@@ -110,14 +128,14 @@ contract PADLOnChainBN {
     /// @param _add ethereum address of participant
     /// @param _zl zero line
     /// @param _amt amount of coins minted (initial balance)
-    function addRequests(address _add, string memory _zl, uint _amt) public onlyByIssuer {
+    function addRequests(address _add, string memory _zl, uint _amt) public override onlyByIssuer {
         reqs[_add] = _zl;
         reqs_amounts[_add] = _amt;
     }
 
     /// @dev function to add a participant to contract. Gives access to the functionalities of the contract
     /// @param _add ethereum address of participant
-    function addParticipant(address _add) public onlyByIssuer {
+    function addParticipant(address _add) public override onlyByIssuer {
         participants[_add] = true;
         txnApproval[_add] = false;
         allParticipants.push(_add);
@@ -126,40 +144,40 @@ contract PADLOnChainBN {
 
     /// @dev function to find balance deposited in the contract
     /// @return returns balance deposited in the contract
-    function getTotalBalance() public view returns (uint) {
+    function getTotalBalance() public override view returns (uint) {
         return address(this).balance;
     }
 
     /// @dev function to retrieve participant by id or index
     /// @param i integer corresponding to participants id or index
     /// @return address of participant corresponding to i
-    function retrieveParticipant(uint i) public view returns (address){
+    function retrieveParticipant(uint i) public override view returns (address){
         return allParticipants[i];
     }
 
     /// @dev function to retrieve total number of participants
     /// @return number of participants
-    function retrieveNumberOfParticipants() public view returns (uint){
+    function retrieveNumberOfParticipants() public override view returns (uint){
         return allParticipants.length;
     }
 
     /// @dev function to store participants PADL public key on the contract
     /// @param _pk public key of participant
     /// @param _add ethereum address of participant
-    function storePublicKey(string memory _pk, address _add) public {
+    function storePublicKey(string memory _pk, address _add) public override {
         zkledgerPks[_add] = _pk;
     }
 
     /// @dev function to retrieve PADL public key of a participant
     /// @param _add participant's ehtereum address
     /// @return public key of participant with address _add
-    function retrievePk(address _add) public view returns (string memory){
+    function retrievePk(address _add) public override view returns (string memory){
         return zkledgerPks[_add];
     }
 
     /// @dev function to retrieve public key of all participants
     /// @return all PADL public keys
-    function retrieveAllPks() public view returns (string memory){
+    function retrieveAllPks() public override view returns (string memory){
         if (allParticipants.length == 0)
         {
             return "";
@@ -174,22 +192,22 @@ contract PADLOnChainBN {
     /// @dev function to retrieve zero line corresponding to address of a participant
     /// @param _add ethereum address
     /// @return returns zero line corresponding to ethereum address _add
-    function retrieveZeroLine(address _add) public view returns (string memory){
+    function retrieveZeroLine(address _add) public override view returns (string memory){
         return zl[_add];
     }
 
     /// @dev function to add zero line for a participant
     /// @param _zl zero line in string format
     /// @param _add ethereum address
-    function addZeroLine(string memory _zl, address _add) public {
+    function addZeroLine(string memory _zl, address _add) public override {
         zl[_add] = _zl;
     }
 
-    function retrieveTxnLength() public view returns(uint){
+    function retrieveTxnLength() public override view returns(uint){
         return ledger.length;
     }
 
-        function storeIntCMTK(PADLOnChainInterface.cmtk[][] memory _p) public{
+    function storeIntCMTK(PADLOnChainInterface.cmtk[][] memory _p) public override{
         delete commitsTokens;
         for (uint256 temp_asset_index = 0; temp_asset_index < _p.length; temp_asset_index++){
 
@@ -206,24 +224,24 @@ contract PADLOnChainBN {
         }
     }
 
-    function addstorageidentifier(string memory _idnt) public{
+    function addstorageidentifier(string memory _idnt) public override{
         identifier = _idnt;
     }
 
 
-    function retrieveCommitsTokens() public view returns(PADLOnChainInterface.cmtk[][] memory){
+    function retrieveCommitsTokens() public override view returns(PADLOnChainInterface.cmtk[][] memory){
         return commitsTokens;
     }
 
-    function retrieveIdentifier() public view returns(string memory){
+    function retrieveIdentifier() public override view returns(string memory){
         return identifier;
     }
 
-    function voteTxn() public onlyByParticipants{
+    function voteTxn() public override onlyByParticipants{
         txnApproval[msg.sender] = true;
     }
 
-    function checkTxnApproval() public returns(bool){
+    function checkTxnApproval() public override returns(bool){
         uint256 votescount = 0;
         for(uint256 i = 0; i<allParticipants.length; i++){
             address addr = allParticipants[i];
@@ -239,14 +257,14 @@ contract PADLOnChainBN {
         }
         return majorityvotes;
     }
-    function resetVotes() public{
+    function resetVotes() public override{
         for(uint256 i=0; i<allParticipants.length;i++){
             address addr = allParticipants[i];
             txnApproval[addr] = false;
         }
     }
 
-    function updateState() public{
+    function updateState() public override{
         for (uint256 _loop_asset_id = 0; _loop_asset_id < commitsTokens.length; _loop_asset_id++) {
             for (uint256 p = 0; p < allParticipants.length; p++) {
 
@@ -261,7 +279,7 @@ contract PADLOnChainBN {
         delete commitsTokens;
     }
 
-    function approveTxn() public onlyByParticipants{
+    function approveTxn() public override onlyByParticipants{
         bool a = checkTxnApproval();
         if (majorityvotes){
             ledger.push(identifier);
@@ -270,29 +288,29 @@ contract PADLOnChainBN {
             clearTxn();
         }
     }
-    function approveTxnIssuer() virtual public onlyByIssuer {
+    function approveTxnIssuer() public override onlyByIssuer {
         ledger.push(identifier);
         clearTxn();
         updateState();
     }
-    function clearTxn() public{
+    function clearTxn() public override{
         // delete txn;
     }
-    function retrieveTxn(uint i) public view returns(string memory){
+    function retrieveTxn(uint i) public override view returns(string memory){
         // require(i < ledger.length, "Index out of bounds of ledger length");
         return ledger[i];
     }
 
-    function setGovRules(string memory gov) virtual public onlyByIssuer{
+    function setGovRules(string memory gov) public override onlyByIssuer{
         gov_rules = gov;
     }
-    function retrieveGovarnenceRules() public view returns(string memory){
+    function retrieveGovarnenceRules() public override view returns(string memory){
         return gov_rules;
     }
 
     /// @dev function to store zero line in a temporary mapping that is later changed to state once the deposit is received
     /// @param zls commitment-token tuple
-    function addZeroLineToState(PADLOnChainInterface.cmtk [] memory zls) public {
+    function addZeroLineToState(PADLOnChainInterface.cmtk [] memory zls) public override {
          //tempzl[msg.sender] = zls;
          for (uint256 index=0;index<zls.length;index++){
              state[msg.sender].push(zls[index]);
@@ -302,11 +320,11 @@ contract PADLOnChainBN {
     /// @dev function to retrieve state of a participant
     /// @param p participant id
     /// @return state of a participant on the contract (commitment-token tuple)
-    function retrieveStateId(uint256 p) public returns (PADLOnChainInterface.cmtk[] memory){
+    function retrieveStateId(uint256 p) public override returns (PADLOnChainInterface.cmtk[] memory){
         return (state[allParticipants[p]]);
     }
 
-    function processTx(PADLOnChainInterface.txcell[] memory ctx, uint256 asset_id) public onlyByParticipants returns (bool) {
+    function processTx(PADLOnChainInterface.txcell[] memory ctx, uint256 asset_id) public override onlyByParticipants returns (bool) {
         require(ctx.length == allParticipants.length, "Length of transaction not equal to length of participants");
         // proof of balance
         BN254Point memory sum_cm = ctx[0].cm;
@@ -318,15 +336,18 @@ contract PADLOnChainBN {
         // TODO need to take cm and pubk from tx and contract - not from pc.
         for (uint256 p = 0; p < allParticipants.length; p++) {
             // proof of consistency
-            require(zkp.verifyConsistencyProof(ctx[p].pc), 'Proof of consistency failed');
+            require(csp.verify(ctx[p].pc), 'Proof of consistency failed');
             // proof of asset
             require(rng.verify_range_proof(ctx[p].ppositive), 'Range Proof is failed');
         }
+
         // proof of equivalence
+
         uint256 id = allids[msg.sender];
         BN254Point memory tempcm = bn.add(state[allParticipants[id]][asset_id].cm, ctx[id].cm);
         h2r = bn.add(tempcm, bn.neg(ctx[id].compcm));
-        require(zkp.verifyEqProof(ctx[id].peq, h2r), 'Proof of Equivalence failed');
+        require(eqp.verify(ctx[id].peq, h2r), 'Proof of Equivalence failed');
+
          // update state
         for (uint256 p = 0; p < allParticipants.length; p++) {
             state[allParticipants[p]][asset_id].cm = bn.add(ctx[p].cm, state[allParticipants[p]][asset_id].cm);
@@ -336,21 +357,20 @@ contract PADLOnChainBN {
         {
             ledger.push(identifier);
         }
+
         return true;
     }
 
-    function checkSenderCell(PADLOnChainInterface.txcell memory ctxid, address add, BN254Point memory h2rd) public returns (bool){
-        require(zkp.verifyEqProof(ctxid.peq, h2rd), 'Proof of asset failed');
-        require(zkp.verifyConsistencyProof(ctxid.pc_), 'Proof of consistency of complimentary commit failed');
+    function checkSenderCell(PADLOnChainInterface.txcell memory ctxid, address add, BN254Point memory h2rd) public override returns (bool){
+        require(eqp.verify(ctxid.peq, h2rd), 'Proof of asset failed');
+        require(csp.verify(ctxid.pc_), 'Proof of consistency of complimentary commit failed');
         require(rng.verify_range_proof(ctxid.ppositive), 'Proof of positive commitment failed');
-        require(zkp.verifyConsistencyProof(ctxid.pc), 'Proof of consistency failed');
+        require(csp.verify(ctxid.pc), 'Proof of consistency failed');
         return true;
     }
 
-    function checkReceiverCell(PADLOnChainInterface.txcell memory ctx) public returns (bool) {
+    function checkReceiverCell(PADLOnChainInterface.txcell memory ctx) public override returns (bool) {
         require(rng.verify_range_proof(ctx.ppositive), 'Proof of positive commitment failed');
         return true;
     }
-
-
 }

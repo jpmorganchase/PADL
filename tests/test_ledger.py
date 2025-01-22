@@ -160,8 +160,8 @@ class TestLocal(TestCase):
             bank2_deposit_v0 = 20 * 1000000000000000000
             bank2_initial_v0 = 20
     
-            contract_address, bank = deploy_PADLOnChain(secret_key)
-    
+            ledger, bank = deploy_PADLOnChain(secret_key)
+            contract_address = ledger.deployed_address
             # New participant
             account_dict = create_account(contract_address)
             add_participant(account_dict['address'], "Issuer 0", contract_tx_name, file_name_contract)

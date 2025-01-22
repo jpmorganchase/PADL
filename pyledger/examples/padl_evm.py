@@ -11,6 +11,7 @@ ganache-cli --miner.blockGasLimit 10000000000000000 --miner.callGasLimit 1000000
 --account="0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63,10000000000000000000000000"
 """
 from eth_account import Account
+import time
 import os
 import sys
 from pathlib import Path
@@ -18,7 +19,6 @@ import time
 path = os.path.realpath(__file__)
 parent_dir = str(Path(path).parents[2])
 sys.path.append(parent_dir)
-import pyledger.extras.evmnet.participant_scripts as participant_scripts
 from pyledger.extras.evmnet.participant_scripts import *
 
 import logging
@@ -32,9 +32,7 @@ def main():
     LocalAccount = Account.from_key(example_private_key)
     print(LocalAccount.encrypt("padltest!"))
 
-   
     # starting a new ledger, and deployer already by default added itself as an issuer.
-    # NOTE:
 
     contract_address = deploy_new_contract(example_private_key, v0=[1000,1000], types={'0': 'x', '1': 'y'},contract_tx_name=contract_tx_name,file_name_contract=file_name_contract)
     # adding another participant to the list to give access to contract.
@@ -101,12 +99,10 @@ def main():
             check_balance("Bank 2")
             check_all_balances_audit("Issuer 0")
             print('=='*20)
-            
             send_injective_tx(vals=[[0, -2, 2],[0, -2, 2]], file_name="Bank 1")
             check_balance_by_state("Bank 1")
             check_balance_by_state("Bank 2")
             print('=='*100)
-
 
 
 if __name__ == '__main__':

@@ -1,22 +1,17 @@
 pragma solidity ^0.8.28;
 
-import "./bn254.sol";
-import {BN254} from "./bn254.sol";
+import "../Interfaces/BNInterface.sol";
+import "../Interfaces/ConsistencyProofInterface.sol";
 
 /// @title For Verification of proof of consistency of transaction
 /// @author Applied research, Global Tech., JPMorgan Chase, London
 /// @notice This is an code for research and experimentation.
 
-//BN254Point g;
-//    g.x = gx;
-//    g.y = gy;
-//
-//BN254Point h
-//    h.x = hx;
-//    h.y = hy;
-
-contract ConsistencyProofBN {
-    BN254 bn = new BN254();
+contract ConsistencyProofBN is ConsistencyProofInterface {
+    BNInterface bn;
+    constructor(address _bnaddress){
+        bn = BNInterface(_bnaddress);
+    }
     BN254Point s1g;
     BN254Point s2h;
     BN254Point s1gs2h;
@@ -28,21 +23,6 @@ contract ConsistencyProofBN {
     bool b2 = true;
     bool b3 = true;
 
-    struct consistencyProofSolR{
-        BN254Point t1;
-        BN254Point t2;
-        uint256 s1;
-        uint256 s2;
-        uint256 challenge;
-        BN254Point pubkey;
-        BN254Point cm;
-        BN254Point tk;
-        BN254Point chalcm;
-        BN254Point chaltk;
-        BN254Point s2pubkey;
-        BN254Point s1g;
-        BN254Point s2h;
-    }
 
     uint256 gy = 0x20c46e64eb93040ffce510d4fc21d14305a582ec48498a131b22c503abf16232;
     uint256 gx = 0x298c855b781e6bdab88acdcc0a4fed6fa0d89d65a3aebad9ceec83d6b08fca71;
@@ -61,7 +41,7 @@ contract ConsistencyProofBN {
 
     /// @dev function to generate a consistency hash by concatenating several variables from a consistencyProofSolR structure, including public key, commitment, token.
     /// @param  prsol is a structure of consistencyProofSolR type that contains various fields.
-    function getConsistencyHash(consistencyProofSolR memory prsol) public returns(uint256){
+    function getConsistencyHash(consistencyProofSolR memory prsol) public override returns(uint256){
         //b = pushPointToHash(b,gx,gy);
         b = "";
         b = pushPointToHash(b,gx,gy);
@@ -80,11 +60,11 @@ contract ConsistencyProofBN {
     /// @param b  is an initial byte variable to which additional data can be concatenated.
     /// @param x  is the first 256-bit unsigned integer to be concatenated.
     /// @param y  is the second 256-bit unsigned integer to be concatenated.
-    function pushPointToHash(bytes memory b, uint256 x, uint256 y) public returns(bytes memory) {
+    function pushPointToHash(bytes memory b, uint256 x, uint256 y) public override returns(bytes memory) {
         return abi.encodePacked(b, y,x);
     }
 
-    function closeHash(bytes memory b) public returns (uint256){
+    function closeHash(bytes memory b) public override returns (uint256){
         return uint256(sha256(abi.encodePacked(b, zerobytes)))  % order;
     }
 
@@ -99,7 +79,7 @@ contract ConsistencyProofBN {
 
     /// @dev function to verifies the proof of consistency by performing a series of elliptic curve operations and checks.
     /// @param prsol is a structure of consistencyProofSolR type that contains various fields.
-    function verify(consistencyProofSolR memory prsol) public returns(bool){
+    function verify(consistencyProofSolR memory prsol) public override returns(bool){
 
        uint256 hchal = getConsistencyHash(prsol);
        s1g  = bn.mul(g, prsol.s1);
@@ -117,7 +97,6 @@ contract ConsistencyProofBN {
        if (s1gs2h.x==t1ccm.x && s1gs2h.y==t1ccm.y){// && s2pk.x==t2chal.x && s2pk.y==t2chal.y && hchal==prsol.challenge){
            return true;
        }
-
        return false;
     }
 }
