@@ -342,7 +342,6 @@ contract PADLOnChainBN is PADLOnChainInterface{
         }
 
         // proof of equivalence
-
         uint256 id = allids[msg.sender];
         BN254Point memory tempcm = bn.add(state[allParticipants[id]][asset_id].cm, ctx[id].cm);
         h2r = bn.add(tempcm, bn.neg(ctx[id].compcm));

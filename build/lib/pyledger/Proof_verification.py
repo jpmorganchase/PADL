@@ -49,8 +49,6 @@ class Auditing:
     @staticmethod
     def valdiate_proof_of_asset(txs, zero_line, i, tx, nbit=int(BITS), asset=0):
         range_proof = tx[i].P_A
-        if isinstance(range_proof,list):
-            range_proof = tx[i].P_A[0] # the first index is proof A, the second is eq proof which can be removed.
         cms = [x[asset][i].cm for x in txs if len(x) > asset]
         cms.append(zero_line[i][asset].cm)  # issued asset value
         cms.append(tx[i].cm)  # new Tx commit
@@ -61,10 +59,6 @@ class Auditing:
         result = zkbp.range_proof_single_verify(range_proof, nbit, zkbp.gen_GH(), zkbp.from_str(tx[i].cm_))
         assert result, "proof of asset is failed"
 
-    @staticmethod
-    def valdiate_proof_of_positive_commit(cm:str, range_proof:str, nbit=int(BITS)):
-        result = zkbp.range_proof_single_verify(range_proof, nbit, zkbp.gen_GH(), zkbp.from_str(cm))
-        assert result, "proof of asset is failed"
 
     @staticmethod
     def valdiate_proof_of_consistency(pub_keys, i, tx):

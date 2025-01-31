@@ -271,7 +271,7 @@ class Bank:
         """getting ballance from all assets as a list"""
         balance_across_assets = []
         for asset in range(0, self.nassets):
-            balance_across_assets.append(self.secret_balance_book[asset][-1][0])
+            balance_across_assets.append(self.secret_balance_book[asset][-1])
         return balance_across_assets
 
     def get_balance_from_contract(self,c,t):
@@ -512,8 +512,8 @@ class MakeLedger:
             ledger (object): ledger object
             asset (int): asset index
         """
-        # Need to be adapted to BN254
-        # assert InjectiveUtils.check_tx_structure(txs, send_ID), "Transaction structure validation failed."
+
+        assert InjectiveUtils.check_tx_structure(txs, send_ID), "Transaction structure validation failed."
 
         # validate proofs, can be done by anyone at anytime
         for a in range(len(txs)):
@@ -521,12 +521,12 @@ class MakeLedger:
             Auditing.validate_proof_of_balance(tx)
             for p in range(len(tx)):
                 if p == send_ID:
-                    Auditing.valdiate_proof_of_asset(self.txs, self.zero_line, p, tx, asset=asset)
+                    Auditing.validate_proof_of_asset_injective_tx(txs, p, self, a)
                     Auditing.valdiate_proof_of_consistency(self.pub_keys, p, tx)
                     Auditing.valdiate_proof_of_ext_consistency(self.pub_keys,p,tx)
 
                 else:
-                    Auditing.valdiate_proof_of_positive_commit(tx[p].cm, tx[p].P_A)
+                    Auditing.validate_proof_of_positive_commitment(tx[p].P_A, tx[p].cm, self)
                     Auditing.valdiate_proof_of_consistency(self.pub_keys, p, tx)
 
 

@@ -1,8 +1,6 @@
 from unittest import TestCase
 import os, glob, sys
 from pathlib import Path
-
-import warnings
 path = os.path.realpath(__file__)
 parent_dir = str(Path(path).parents[1]) # go up 2 levels to '/zkledgerplayground/'
 sys.path.append(parent_dir)
@@ -148,12 +146,44 @@ class TestLocal(TestCase):
 
 
     def test_injective_txs_with_solidity(self):
-        warnings.warn(
-            "deprecated_function() is deprecated and will be removed in a future version.",
-            DeprecationWarning,
-            stacklevel=2  # Shows the warning in the caller's stack
-        )
-        # Function logic (optional)
-        print("This is a deprecated function.")
-
+            secret_key = '0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63'
+            public_key = '0209b02f8a5fddd222ade4ea4528faefc399623af3f736be3c44f03e2df22fb792'
+            LocalAccount = Account.from_key(secret_key)
+            print(LocalAccount.encrypt("padltest!"))
+    
+            contract_tx_name="PADLOnChain"
+            file_name_contract="PADLOnChain.sol"
+    
+            bank1_deposit_v0 = 20 * 1000000000000000000
+            bank1_initial_v0 = 20
+    
+            bank2_deposit_v0 = 20 * 1000000000000000000
+            bank2_initial_v0 = 20
+    
+            ledger, bank = deploy_PADLOnChain(secret_key)
+            contract_address = ledger.deployed_address
+            # New participant
+            account_dict = create_account(contract_address)
+            add_participant(account_dict['address'], "Issuer 0", contract_tx_name, file_name_contract)
+            # register new bank in padl ledger (issuer is done by default using deploy_new_contract().
+            bank = register_padl_onchain(name="Bank", account_dict=account_dict, v0=[bank1_initial_v0], types={'0':'x'}, audit_pk=public_key)
+            request_token_commit("Issuer 0", account_dict['address'], bank.pk, bank1_deposit_v0, [bank1_initial_v0], contract_tx_name=contract_tx_name, file_name_contract=file_name_contract)
+            bal,_ = check_balance_by_state("Bank 1", contract_tx_name, file_name_contract)
+            assert bal == 20
+    
+            # # adding another participant to the list to give access to contract.
+            account_dict = create_account(contract_address)
+            add_participant(account_dict['address'], "Issuer 0", contract_tx_name, file_name_contract)
+            # # register new bank in padl ledger (issuer is done by default using deploy_new_contract().
+            bank = register_padl_onchain(name="Bank", account_dict=account_dict, v0=[bank2_initial_v0], types={'0':'x'}, audit_pk=public_key)
+            request_token_commit("Issuer 0", account_dict['address'], bank.pk, bank2_deposit_v0, [bank2_initial_v0], contract_tx_name=contract_tx_name, file_name_contract=file_name_contract)
+            bal, pr = check_balance_by_state("Bank 2", contract_tx_name, file_name_contract)
+            assert bal == 20
+    
+    
+            # Send 2 padlcoin from bank 1 to bank 2
+            tx = send_injective_tx(vals=[[0, -2, 2]], file_name="Bank 1", contract_tx_name=contract_tx_name,file_name_contract=file_name_contract)
+            bal1, _ = check_balance_by_state("Bank 1", contract_tx_name, file_name_contract)
+            bal2, _ = check_balance_by_state("Bank 2", contract_tx_name, file_name_contract)
+            assert bal1 == 18 and bal2 == 22
 

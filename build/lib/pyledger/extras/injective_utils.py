@@ -165,8 +165,8 @@ class InjectiveUtils():
 
         return range_proof_sol
 
-    @staticmethod
-    def check_tx_structure(tx, send_ID):
+    #@staticmethod
+    def check_tx_structure(self, tx, send_ID):
             """Check the structure (data type and variable length)
             Args:
                 tx (list): a list of transactions
@@ -175,12 +175,12 @@ class InjectiveUtils():
             result = []
             for i in range(len(tx)):
                 for id,v in enumerate(tx[i]):
-                    result.append(InjectiveUtils.check_help(tx[i][id], id, send_ID))
+                    result.append(self.check_help(tx[i][id], id, send_ID))
             return all(res==True for res in result)
 
  
-    @staticmethod
-    def check_help(tx, id, send_ID):
+    #@staticmethod
+    def check_help(self, tx, id, send_ID):
             """help function to check the type and ;ength of each variable in tx
             Args:
                 tx (object): one transaction object

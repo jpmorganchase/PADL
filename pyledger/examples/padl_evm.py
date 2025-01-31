@@ -23,9 +23,6 @@ from pyledger.extras.evmnet.participant_scripts import *
 
 import logging
 
-contract_tx_name="PADLOnChainBN"
-file_name_contract="PADLOnChainBN.sol"
-
 def main(): 
     # use secret key for issuer, in this example, it should be an account already registered in EVM
     example_private_key = '0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63'
@@ -33,24 +30,23 @@ def main():
     print(LocalAccount.encrypt("padltest!"))
 
     # starting a new ledger, and deployer already by default added itself as an issuer.
+    contract_address = deploy_new_contract(example_private_key, v0=[1000,1000], types={'0': 'x', '1': 'y'})
 
-    contract_address = deploy_new_contract(example_private_key, v0=[1000,1000], types={'0': 'x', '1': 'y'},contract_tx_name=contract_tx_name,file_name_contract=file_name_contract)
     # adding another participant to the list to give access to contract.
     account_dict = create_account(contract_address)
-
     add_participant(account_dict['address'])
 
     ledger, issuer = get_ledger_bank_padl("Issuer 0")
     public_key = issuer.pk
     # register new bank in padl ledger (issuer is done by default using deploy_new_contract().
-    register_padl(name="Bank", v0=[10,10], types={'0': 'x', '1': 'y'}, account_dict=account_dict, audit_pk=public_key,contract_tx_name=contract_tx_name,file_name_contract=file_name_contract)
+    register_padl(name="Bank", v0=[10,10], types={'0': 'x', '1': 'y'}, account_dict=account_dict, audit_pk=public_key)
     bank_send_deposit(account_dict,10)
     check_balance("Bank 1")
     # adding another participant to the list to give access to contract.
     account_dict = create_account(contract_address)
     add_participant(account_dict['address'])
     # register new bank in padl ledger (issuer is done by default using deploy_new_contract().
-    register_padl(name="Bank", v0=[10,10], types={'0': 'x', '1': 'y'}, account_dict=account_dict, audit_pk=public_key,contract_tx_name=contract_tx_name,file_name_contract=file_name_contract)
+    register_padl(name="Bank", v0=[10,10], types={'0': 'x', '1': 'y'}, account_dict=account_dict, audit_pk=public_key)
     bank_send_deposit(account_dict,10)
     check_balance("Bank 2")
     for txx in range(3):

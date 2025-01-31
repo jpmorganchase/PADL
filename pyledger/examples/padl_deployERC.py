@@ -21,7 +21,7 @@ from pyledger.extras.evmnet.participant_scripts import *
 
 url = "http://127.0.0.1:8545"
 chain_id = 1337
-local_dirname = "/Users/yashsatsangi/Documents/code/PADL/PADL-latest/padl_private/pyledger/"
+local_dirname = str(Path(os.path.realpath(__file__)).parents[1])
 w3 = Web3(Web3.HTTPProvider(url, request_kwargs={'timeout': 600000}))
 
 
@@ -46,7 +46,7 @@ print('publickey_bank',publickey_bank)
 
 bank=register_padl('Bank', account_dict, v0=[0,0] , types={'0': 'cash-token', '1': 'fund-token'})
 
-bank_gkp = PadlEVM(secret_key=account_dict['private_key'], contract_address=account_dict['contract_address'], contract_tx_name="PADLOnChain", file_name_contract="PADLOnChain.sol")
+bank_gkp = PadlEVM(secret_key=account_dict['private_key'], contract_address=account_dict['contract_address'], contract_tx_name="PADLOnChainBN", file_name_contract="PADLOnChainBN.sol")
 pks = bank_gkp.retrieve_pks()
 print('pks', pks)
 

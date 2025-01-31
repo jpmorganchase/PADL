@@ -121,7 +121,7 @@ def clean():
         os.chmod(path, stat.S_IWRITE)
         func(path)
 
-    patterns = ['tests/Bank*', 'Bank*', 'pyledger/examples/Bank*','pyledger/examples/Issuer*']
+    patterns = ['tests/Bank*','tests/Issuer*' 'Bank*', 'pyledger/examples/Bank*','pyledger/examples/Issuer*','pyledger/compiled_*']
     for pattern in patterns:
         for file in glob.glob(pattern):
             try:

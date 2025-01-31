@@ -181,7 +181,7 @@ class InjectiveTx(CreateTx):
 
             tx[a][self.bank.id].P_C = InjectiveUtils.format_consistency_proof(tx[a][self.bank.id].P_C, tx[a][self.bank.id].cm, tx[a][self.bank.id].token, ledger.pub_keys[self.bank.id])
             rpr, token, cm_, r, eqpr, consistency_pr_, v = self.generate_proof_of_asset_for_injective_tx(vals, self.bank.id, ledger, tx[a][self.bank.id], a, smart_contract=smart_contract) # based on the new balance
-            rpr = ProofGenerator().generate_proof_of_asset(v, r, smart_contract=smart_contract)
+            rpr = ProofGenerator().generate_proof_of_asset(v, r, smart_contract=True)
             tx[a][self.bank.id].P_A = [rpr, eqpr]
             tx[a][self.bank.id].cm_ = cm_.get
             tx[a][self.bank.id].token_ = token.get
