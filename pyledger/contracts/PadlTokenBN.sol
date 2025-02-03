@@ -1,11 +1,11 @@
 pragma solidity ^0.8.28;
+/// @title Private and auditable transaction via on-chain verification
+/// @author Applied research, Global Tech., JPMorgan Chase, London
+/// @notice This is an code for research and experimentation.
 
 import "./ERC/ERC20.sol";
 import "../Interfaces/BNInterface.sol";
 import "./Interfaces/PADLOnChainInterface.sol";
-/// @title Private and auditable transaction via on-chain verification
-/// @author Applied research, Global Tech., JPMorgan Chase, London
-/// @notice This is an code for research and experimentation.
 
 contract PadlTokenBN is ERC20 {
     //BN254 public bn = new BN254();

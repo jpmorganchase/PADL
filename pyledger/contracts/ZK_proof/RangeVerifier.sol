@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
-
+/// @title Verification for proof of equivalence in transaction
+/// @author Applied research, Global Tech., JPMorgan Chase, London
+/// @notice This is an code for research and experimentation.
 //import "./bn254.sol";
 import  "../Interfaces/BNInterface.sol";
 import "../Interfaces/RangeProofInterface.sol";

@@ -11,7 +11,6 @@ from web3 import Web3
 path = os.path.realpath(__file__)
 parent_dir = str(Path(path).parents[3])
 from pyledger.create_tx import InjectiveTxSmartContract, ERCTx
-from pyledger.Proof_Generation import ProofGenerator
 
 CONTRACT_FILE="PADLOnChainBN"
 BITS = 64

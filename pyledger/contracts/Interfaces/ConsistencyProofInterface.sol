@@ -1,21 +1,8 @@
 pragma solidity ^0.8.28;
-
-//import "./bn254.sol";
-//import {BN254} from "./bn254.sol";
-import "../Interfaces/BNInterface.sol";
-
-/// @title For Verification of proof of consistency of transaction
+/// @title Verification for proof of equivalence in transaction
 /// @author Applied research, Global Tech., JPMorgan Chase, London
 /// @notice This is an code for research and experimentation.
-
-//BN254Point g;
-//    g.x = gx;
-//    g.y = gy;
-//
-//BN254Point h
-//    h.x = hx;
-//    h.y = hy;
-
+import "../Interfaces/BNInterface.sol";
 
 struct consistencyProofSolR{
     BN254Point t1;

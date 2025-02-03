@@ -1,15 +1,10 @@
+pragma solidity ^0.8.20;
 /// @title Private and auditable transaction via on-chain verification
 /// @author Applied research, Global Tech., JPMorgan Chase, London
 /// @notice This is an code for research and experimentation.
-pragma solidity ^0.8.20;
 
-//import "./ZK_proof/bn254.sol";
-//import {ConsistencyProofBN} from "./ZK_proof/ConsistencyProofBN.sol";
-//import {EquivalenceProofBN} from "./ZK_proof/EquivalenceProofBN.sol";
 
 import "./Interfaces/PADLOnChainInterface.sol";
-//import {Bulletproof} from "./ZK_proof/RangeVerifier.sol";
-//import {Rangeproof} from "./ZK_proof/RangeVerifier.sol";
 import "../Interfaces/RangeProofInterface.sol";
 import "../Interfaces/BNInterface.sol";
 import "../Interfaces/ConsistencyProofInterface.sol";

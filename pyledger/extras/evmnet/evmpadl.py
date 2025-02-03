@@ -201,7 +201,6 @@ class EvmLedger(MakeLedger):
         return padladd, bnaddress, eqaddress, consaddress, rngaddress
 
     def deploy_padl_erc(self,contract_args):
-        #padladd, bnaddress, eqaddress, consaddress, rngaddress = self.deploy_padlbn_onchain(0)
         contract_dict = {"contract_location": None,
                               "contract_name": "PadlTokenBN",
                               "file_name": "PadlTokenBN.sol",

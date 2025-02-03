@@ -1,11 +1,10 @@
 pragma solidity ^0.8.28;
-
-import "../Interfaces/BNInterface.sol";
-import "../Interfaces/ConsistencyProofInterface.sol";
-
 /// @title For Verification of proof of consistency of transaction
 /// @author Applied research, Global Tech., JPMorgan Chase, London
 /// @notice This is an code for research and experimentation.
+
+import "../Interfaces/BNInterface.sol";
+import "../Interfaces/ConsistencyProofInterface.sol";
 
 contract ConsistencyProofBN is ConsistencyProofInterface {
     BNInterface bn;

@@ -1,4 +1,7 @@
 pragma solidity ^0.8.0;
+/// @title Private and auditable transaction via on-chain verification
+/// @author Applied research, Global Tech., JPMorgan Chase, London
+/// @notice This is an code for research and experimentation.
 
 contract StorePermissionsAndTxns{
   

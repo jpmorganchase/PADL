@@ -1,11 +1,11 @@
 pragma solidity ^0.8.20;
+/// @title Verification for proof of equivalence in transaction
+/// @author Applied research, Global Tech., JPMorgan Chase, London
+/// @notice This is an code for research and experimentation.
 
 import "../Interfaces/BNInterface.sol";
 import "../Interfaces/EquivalenceProofInterface.sol";
 
-/// @title Verification for proof of equivalence in transaction
-/// @author Applied research, Global Tech., JPMorgan Chase, London
-/// @notice This is an code for research and experimentation.
 
 contract EquivalenceProofBN is EquivalenceProofInterface{
 
