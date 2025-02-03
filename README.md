@@ -13,7 +13,7 @@ PADL is based on zero-knowledge proofs for inter-parties framework for exploring
 1. python > 3.8 and Rust.
 2. Smart Contracts to be added.
 ### Padl Installation
-In new python env. Run "python setup.py init"
+In new python env. Run "pip install -e . init" and "python setup.py init"
 
 ## Citing PADL
 To cite PADL, please reference the (LINK HERE + BIBTEX) will be added soon.
