@@ -1,6 +1,0 @@
-toml
-maturin
-Flask
-numpy
-web3==5.18.0
-py-solc-x
