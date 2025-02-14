@@ -10,6 +10,7 @@ from web3 import Web3
 import time
 
 from pathlib import Path
+
 path = os.path.realpath(__file__)
 parent_dir = str(Path(path).parents[3])
 main_dir = str(Path(path).parents[2])
@@ -17,7 +18,8 @@ main_dir = str(Path(path).parents[2])
 sys.path.append(parent_dir)
 from pyledger.extras.evmnet.evmpadl import EvmLedger
 from pyledger.ledger import BankCommunication, MakeLedger
-from pyledger.zkutils import Secp256k1
+from pyledger.zkutils import curve_util
+from pyledger.extras.injective_utils import InjectiveUtils
 import hashlib
 import json
 import configparser
@@ -33,11 +35,12 @@ chain_id=ip_config.getint("LOCAL", "chain_id")
 
 
 class PadlEVM(EvmLedger):
-    def __init__(self, secret_key=None, v0=1000,
+    def __init__(self, secret_key=None, v0=0,
                  contract_address=None,
                  comm=BankCommunication(),
                  contract_tx_name="StorePermissionsAndTxns",
-                 file_name_contract="StorePermissionsAndTxns.sol", redeploy=False):
+                 file_name_contract="StorePermissionsAndTxns.sol",
+                 redeploy=False):
         if not secret_key:
             raise NotImplementedError("Need secret key")
 
@@ -46,15 +49,19 @@ class PadlEVM(EvmLedger):
         self.w3 = Web3(Web3.HTTPProvider(self.url, request_kwargs={'timeout': 600000}))
         self.local_dirname = main_dir
         account_address = self.w3.eth.account.from_key(secret_key).address
-        self.attached_pk = Secp256k1.to_pk(secret_key)
+
         super().__init__(comm, file_name_contract, self.local_dirname, self.w3, chain_id,
                          account_address, secret_key, contract_tx_name)
+
+        self.attached_pk = curve_util.to_pk(secret_key)
         if redeploy:
-            self.deploy(v0, recompile=True)
+            #self.deploy(v0)
+            self.deploy_padlbn_onchain(v0)
         else:
             if not contract_address:
                 NotImplementedError('Need contract address or set redeploy=True')
             self.deployed_address= contract_address
+
         
         self.testnet_dict = self.connect_to_evm()
         self.pub_keys = self.get_all_pks()
@@ -70,7 +77,7 @@ class PadlEVM(EvmLedger):
         _address = self.w3.toChecksumAddress(_address)
         nonce = self.w3.eth.get_transaction_count(self.account_address)
         fn_call = self.testnet_dict['contract_obj'].functions.addParticipant(_address).buildTransaction(
-            {"chainId": self.chain, "from": self.account_address, "nonce": nonce, "gas": 20000000})
+            {"chainId": self.chain, "from": self.account_address, "nonce": nonce, "gas": 2000000})
         self.send_txn_from_fn_call(fn_call)
 
     def add_participant_to_contract_pk(self, _address, _pk, initial_assets):
@@ -207,7 +214,6 @@ class PadlEVM(EvmLedger):
         fn_call = self.testnet_dict['contract_obj'].functions.checkTxnApproval().call()
         return fn_call
 
-
     def add_commits_tokens(self, distributed_tx, proof_hash):
         for asset_tx in distributed_tx:
             for p in asset_tx:
@@ -215,7 +221,7 @@ class PadlEVM(EvmLedger):
                 p.token = zkbp.to_token_from_str(p.token).get
 
         cmtk = [[p for p in asset_tx] for asset_tx in distributed_tx] 
-        d = [[Secp256k1.get_ec_from_cells(ct) for ct in asset] for asset in cmtk]
+        d = [[curve_util.get_ec_from_cells(ct) for ct in asset] for asset in cmtk]
 
         nonce = self.w3.eth.get_transaction_count(self.account_address)
         fn_call = self.testnet_dict['contract_obj'].functions.storeIntCMTK(d).buildTransaction(
@@ -269,8 +275,8 @@ class PadlEVM(EvmLedger):
         for a in range(no_assets):
             c= state_id[a][0]
             t= state_id[a][1]
-            commit = Secp256k1.get_compressed_ecpoint(c[0],c[1])
-            token = Secp256k1.get_compressed_ecpoint(t[0],t[1])
+            commit = curve_util.get_compressed_ecpoint(c[0],c[1])
+            token = curve_util.get_compressed_ecpoint(t[0],t[1])
             self.state[a][id]=MakeLedger.Cell(cm=commit,token=token)
             state_id_.append(MakeLedger.Cell(cm=commit,token=token))
         return state_id_
@@ -292,11 +298,21 @@ class PadlEVM(EvmLedger):
         bal = self.testnet_dict['contract_obj'].functions.getBalance().call()
         return bal
 
-
     def register_zero_line(self, initial_assets_cell):
         super().register_zero_line(initial_assets_cell)
         zero_line = MakeLedger.Cell.list_to_json(initial_assets_cell)
         self.add_zero_line(zero_line)
+        zl = MakeLedger.tx_from_json(zero_line)
+        self.add_zero_line_to_state(zl)
+
+    def add_zero_line_to_state(self, zl):
+        zl = [curve_util.get_ec_from_cells(a) for a in zl]
+
+        nonce = self.w3.eth.getTransactionCount(self.account_address)
+        fn_call = self.testnet_dict["contract_obj"].functions.addZeroLineToState(zl).buildTransaction({
+            "chainId": self.chain, "from": self.account_address, "nonce": nonce}
+        )
+        self.send_txn_from_fn_call(fn_call)
 
     def add_zero_line(self, zero_line, add=''):
         zl = MakeLedger.tx_from_json(zero_line)
@@ -326,8 +342,6 @@ class PadlEVM(EvmLedger):
 
     def retrieve_int_zero_line(self,_add):
         zl = self.testnet_dict['contract_obj'].functions.retrieveIntZeroLine(_add).call()
-
-
 
     def remove_all_participants(self):
         nonce = self.w3.eth.get_transaction_count(self.account_address)
@@ -473,7 +487,7 @@ class PadlEVM(EvmLedger):
         return zls
 
     def transform_tx_int(self, tx):
-        return [[Secp256k1.get_ec_from_cells(p) for p in el] for el in tx]
+        return [[curve_util.get_ec_from_cells(p) for p in el] for el in tx]
 
     # remove this function
     def get_ledger(self):
@@ -484,6 +498,24 @@ class PadlEVM(EvmLedger):
         for p in proofs:
             dtx = MakeLedger.txs_from_json(p)
             self.txs.append(dtx)
+
+    def send_injective_txn_padlonchain(self, tx, asset_id):
+        nonce = self.w3.eth.getTransactionCount(self.account_address)
+        fn_call = self.testnet_dict["contract_obj"].functions.processTx(tx, asset_id).buildTransaction({
+            "chainId": self.chain, "from": self.account_address, "nonce": nonce, "gas": 20000000}
+        )
+        receipt = self.send_txn_from_fn_call(fn_call)
+        print(f'gas used for injective tx of asset {asset_id}, and no. of parties {len(tx)}:', receipt['gasUsed'])
+        assert receipt['status'] == 1, 'transaction error'
+
+    def cashout_padl_onchain(self, sval, bankid, pr):
+        pr = InjectiveUtils.format_eq_proof(pr)
+        nonce = self.w3.eth.getTransactionCount(self.account_address)
+        fn_call = self.testnet_dict['contract_obj'].functions.processEqPr(sval, bankid, pr).buildTransaction({
+            "chainId": self.chain, "from": self.account_address, "nonce": nonce, "gas": 20000000}
+        )
+        x = self.send_txn_from_fn_call(fn_call)
+        print(f"Verification complete. Transaction sent.")
 
 
 

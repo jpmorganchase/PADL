@@ -39,7 +39,7 @@ def main():
         t3=time.time()
         print("validation time", t3-t2)
     print("--------------Local Run Experiment-------------")
-    print("time for tx of", n_assets, "and ", banks, "banks:", (time.time()-t0)/n_txs)
+    print("time for tx of", n_assets, "and ", len(banks), "banks:", (time.time()-t0)/n_txs)
     print("average tx per party and asset",(time.time()-t0)/(n_txs*n_assets*n_banks))
 
     ledger = LedgerFile(path=r"./Ledger.json",

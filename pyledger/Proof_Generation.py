@@ -19,27 +19,58 @@ logging.basicConfig(level=logging.WARN, format='%(message)s')
 path = os.path.realpath(__file__)
 parent_dir = str(Path(path).parents[1])  # go up 2 levels [1] to '/zkledgerplayground/'
 sys.path.append(parent_dir)
-from pyledger.zkutils import Commit, Token, r_blend, Secp256k1  # interface to zkbp.
+from pyledger.zkutils import Commit, Token, r_blend, Secp256k1, curve_util  # interface to zkbp.
 from pyledger.extras.injective_utils import InjectiveUtils
-BITS = 64
+BITS = 32
 MAX = int(2 ** (BITS / 4))
 
 
+def ptsol(point_str):
+    return (int(zkbp.from_str(point_str["point"]).x), int(zkbp.from_str(point_str["point"]).y))
+
+
+def ptsol_arr(point_str_arr):
+    return [(int(zkbp.from_str(point_str["point"]).x), int(zkbp.from_str(point_str["point"]).y)) for point_str in
+            point_str_arr]
+
+
+def ssol(scalar_str):
+    return int((scalar_str["scalar"]), 16)
 
 class ProofGenerator:
     """
     This object is for generating proofs.
 """
-
-
-    def generate_proof_of_asset(self, v, r, n_bit=int(BITS/2)):
-        from pyledger.Proof_verification import Auditing
+    def generate_proof_of_asset(self, v, r, n_bit=BITS, smart_contract=False):
+#       from pyledger.Proof_verification import Auditing
         start = time.time()
         range_proof = zkbp.range_proof_single(n_bit=n_bit, val=v, gh=zkbp.gen_GH(), r=r.val)
-        done = time.time()
-        elapsed = done - start
+
+        if smart_contract:
+            sol_proof= self.sol_format_proof_of_asset(json.loads(range_proof),v,r,n_bit)
+            # rejecting smaller than 32 scalars for appropriate hashing on contract.
+            for val in sol_proof:
+                if isinstance(val,int):
+                    if (val.bit_length() + 7) // 8 <32:
+                        return self.generate_proof_of_asset(v, r, n_bit=BITS, smart_contract=True)
+            # returning solidity formatted proof
+            return sol_proof
+        # returning json proof
         return range_proof
-  
+
+    def sol_format_proof_of_asset(self, range_proof_json,v,r,n_bit):
+        gh = zkbp.gen_GH()
+        cm = Commit(gh, v, r)
+        ghvec = json.loads(zkbp.ghvec(n_bit))
+        range_proof_sol = ((ptsol(range_proof_json["A"]), ptsol(range_proof_json["S"]), ptsol(range_proof_json["T1"]),
+                            ptsol(range_proof_json["T2"]), ssol(range_proof_json["tau_x"]), ssol(range_proof_json["miu"]),
+                            ssol(range_proof_json["tx"]), int(range_proof_json["inner_product_proof"]["a_tag"], 16),
+                            int(range_proof_json["inner_product_proof"]["b_tag"], 16), ptsol({"point": gh.g}),
+                            ptsol({"point": gh.h}), ptsol({"point": cm.eval.get}),
+                            ptsol_arr(range_proof_json["inner_product_proof"]["L"]),
+                            ptsol_arr(range_proof_json["inner_product_proof"]["R"]), ptsol_arr(ghvec[0]),
+                            ptsol_arr(ghvec[1])))
+        return range_proof_sol
 
     def generate_proof_of_balance(self, tx):
         from pyledger.Proof_verification import Auditing
@@ -147,9 +178,6 @@ class ProofGenerator:
         range_proof = zkbp.range_proof_single(n_bit=n_bit, val=sum_v_ratio, gh=self.gh, r=sum_r_ratio.val)
         return range_proof
     
-########################################################################################################################################
-########################################################################################################################################
-    
 
     def generate_range_proof_positive_commitment_erc(self, val, pub_key):
         """generate the range proof positive commitment
@@ -190,8 +218,6 @@ class ProofGenerator:
         r = reduce(lambda x, y: x+y, rs)
         rpr = {"cm": Secp256k1.get_xy(c.get), "pr1": eqprs[0], "pr2": eqprs[1], "pr3": eqprs[2], "pr4": eqprs[3]}
         return rpr, t, c, r
-    
-
     
 
     def generate_range_proof_positive_commitment(self, val, id, ledger, smart_contract=True):
@@ -241,10 +267,11 @@ class ProofGenerator:
         r = reduce(lambda x, y: x+y, rs)
         
         if smart_contract:
-            rpr = {"cm": Secp256k1.get_xy(c.get), "pr1": eqprs[0], "pr2": eqprs[1], "pr3": eqprs[2], "pr4": eqprs[3]}
+            rpr = {"cm": curve_util.get_xy(c.get), "pr1": eqprs[0], "pr2": eqprs[1], "pr3": eqprs[2], "pr4": eqprs[3]}
             return rpr, t, c, r
         else :
             return prs, t, c, r
+
         
 
-    
+

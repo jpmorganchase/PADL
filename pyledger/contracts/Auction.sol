@@ -1,11 +1,8 @@
 pragma solidity ^0.8.0;
 import "./PADLOnChain.sol";
-
 /// @title A wrapper for auction, including the ending time of opening the auction and issuer approve the transaction
 /// @author Applied research, Global Tech., JPMorgan Chase, London
 /// @notice This is an code for research and experimentation.
-
-
 contract Auction is PADLOnChain{
   event auctionOpen(string msg, uint time);
   event auctionClosed(string msg, uint id);

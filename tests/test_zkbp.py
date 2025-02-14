@@ -30,7 +30,7 @@ class TestLocal(TestCase):
         hx = zkbp.h_to_x(gh, r.val)
         gr = zkbp.g_to_r(gh, r.val)
         gx = zkbp.g_to_x(gh, 123)
-        assert gx.to_str=='02236c0a8acaa8ba321ca24d058efd9a9082fbf967f318db15b88f2df41c30d59e', 'gx error'
+        #TODO: replace for any curves: assert gx.to_str=='02236c0a8acaa8ba321ca24d058efd9a9082fbf967f318db15b88f2df41c30d59e', 'gx error'
 
         value = 13
         r = zkbp.gen_r()
@@ -54,14 +54,14 @@ class TestLocal(TestCase):
         assert new_comm.to_str == cm_sample.to_str, "commit3 = Add(commit1,commit2) should satisfies commit3 === Commit(commit1.value + commit2.value, commit1.r + commit2.r)"
 
         new_comm = zkbp.sub(cm,cm)
-        assert new_comm.to_str == zero_string, "Sub(commit1,commit2) should return 0 if commit1 === commit2"
+        assert new_comm.is_zero(), "Sub(commit1,commit2) should return 0 if commit1 === commit2"
 
         # Commitment operations for commitment string, returning the same string structure
         new_comm_str_repr = zkbp.add_value_commits(cm.to_str,cm.to_str)
         assert new_comm_str_repr == cm_sample.to_str, "commit3 = Add(commit1,commit2) should satisfies commit3 === Commit(commit1.value + commit2.value, commit1.r + commit2.r)"
 
         new_comm_str_repr = zkbp.sub_value_commits(cm.to_str,cm.to_str)
-        assert new_comm_str_repr == zero_string, "Sub(commit1,commit2) should return 0 if commit1 === commit2"
+        assert zkbp.from_str(new_comm_str_repr).is_zero(), "Sub(commit1,commit2) should return 0 if commit1 === commit2"
 
         # Construct a commit point from its string representation
         # new_cm := sub(cm,cm) should be that new_cm === from_str(new_cm_str_repr)
@@ -128,6 +128,7 @@ class TestLocal(TestCase):
         max_range = 1000000
 
         computed_v = zkbp.get_brut_v(cm,tk,gh,key_pair,max_range)
+
         assert v==computed_v, "Brute-forcing g^v should give the correct v."
 
     def test_hash_commit(self):
