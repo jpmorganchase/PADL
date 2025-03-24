@@ -5,10 +5,10 @@ pragma solidity ^0.8.20;
 
 
 import "./Interfaces/PADLOnChainInterface.sol";
-import "../Interfaces/RangeProofInterface.sol";
-import "../Interfaces/BNInterface.sol";
-import "../Interfaces/ConsistencyProofInterface.sol";
-import "../Interfaces/EquivalenceProofInterface.sol";
+import "./Interfaces/RangeProofInterface.sol";
+import "./Interfaces/BNInterface.sol";
+import "./Interfaces/ConsistencyProofInterface.sol";
+import "./Interfaces/EquivalenceProofInterface.sol";
 //import "./ZK_proof/RangeProofVer.sol";
 
 contract PADLOnChainBN is PADLOnChainInterface{
