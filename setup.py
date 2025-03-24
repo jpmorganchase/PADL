@@ -60,7 +60,7 @@ class InstallCommand(Command):
     def finalize_options(self):
         pass
     def run(self):
-        subprocess.check_call([sys.executable, "-m", "pip", "install", 'toml', 'maturin', 'Flask', 'numpy'])
+        subprocess.check_call([sys.executable, "-m", "pip", "install", 'toml', 'maturin','web3==5.18.0', 'py-solc-x', 'Flask', 'numpy', 'eth-account', 'requests'])
         try:
             # clone kzen curv and bulletproofs and extend them to bn254, and additional proofs.
             if not os.path.exists("zkbp_module/curv"):
@@ -73,7 +73,7 @@ class InstallCommand(Command):
             # add 254bn wrapper for curv lib
             [shutil.copy(file, "zkbp_module/curv/src/elliptic/curves/") for file in
             glob.glob("zkbp_module/src/curv_ext/*")]
-            update_cargo_toml("zkbp_module/curv/cargo.toml")
+            update_cargo_toml("zkbp_module/curv/Cargo.toml")
 
             replace_in_file("zkbp_module/bulletproofs/src/proofs/inner_product.rs")
             replace_in_file("zkbp_module/bulletproofs/src/proofs/range_proof.rs")
@@ -198,6 +198,8 @@ setup(
         'numpy',
         'web3==5.18.0',
         'py-solc-x',
+        'eth-account',
+        'requests'
     ],
     cmdclass={
         'init': InstallCommand,
