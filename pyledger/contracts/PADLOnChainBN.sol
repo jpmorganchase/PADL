@@ -79,6 +79,11 @@ contract PADLOnChainBN is PADLOnChainInterface{
         _;
     }
 
+    modifier onlyByIssuerOrParticipant {
+        require(msg.sender == Issuer || participants[msg.sender], "Not authorized");
+        _;
+    }
+
     /// @dev PADL transaction structure consists of a commitment, token, complimentary commitment, complimentary token,
     /// @dev proof of positive commitment, range proof, equivalence proof.
     /*
@@ -173,7 +178,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
     /// @dev function to add zero line for a participant
     /// @param _zl zero line in string format
     /// @param _add ethereum address
-    function addZeroLine(string memory _zl, address _add) public override {
+    function addZeroLine(string memory _zl, address _add) public override onlyByIssuer {
         zl[_add] = _zl;
     }
 
@@ -238,7 +243,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
         }
     }
 
-    function updateState() public override{
+    function updateState() public override onlyByIssuerOrParticipant{
         for (uint256 _loop_asset_id = 0; _loop_asset_id < commitsTokens.length; _loop_asset_id++) {
             for (uint256 p = 0; p < allParticipants.length; p++) {
 
@@ -267,7 +272,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
         clearTxn();
         updateState();
     }
-    function clearTxn() public override{
+    function clearTxn() public override onlyByIssuerOrParticipant(){
         // delete txn;
     }
     function retrieveTxn(uint i) public override view returns(string memory){
