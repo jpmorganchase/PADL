@@ -49,6 +49,8 @@ contract PADLOnChainBN is PADLOnChainInterface{
 
     BN254Point public h2r;
 
+    uint256 public voteCount;
+
     struct initargs {
         uint256 _totalSupply;
         address _bnaddress;
@@ -218,18 +220,13 @@ contract PADLOnChainBN is PADLOnChainInterface{
     }
 
     function voteTxn() public override onlyByParticipants{
+        require(!txnApproval[msg.sender], "Already voted");
         txnApproval[msg.sender] = true;
+        voteCount += 1;
     }
 
     function checkTxnApproval() public override returns(bool){
-        uint256 votescount = 0;
-        for(uint256 i = 0; i<allParticipants.length; i++){
-            address addr = allParticipants[i];
-            if (txnApproval[addr]) {
-            votescount = votescount + 1;
-            }
-        }
-        if (votescount > (allParticipants.length - 1)){
+        if (voteCount > (allParticipants.length - 1)){
             majorityvotes = true;
         }
         else{
