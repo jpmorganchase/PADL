@@ -348,7 +348,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
         return true;
     }
 
-    function checkSenderCell(PADLOnChainInterface.txcell memory ctxid, BN254Point memory h2rd) public override returns (bool){
+    function checkSenderCell(PADLOnChainInterface.txcell memory ctxid, address add, BN254Point memory h2rd) public override returns (bool){
         require(eqp.verify(ctxid.peq, h2rd), 'Proof of asset failed');
         require(csp.verify(ctxid.pc_), 'Proof of consistency of complimentary commit failed');
         require(rng.verify_range_proof(ctxid.ppositive), 'Proof of positive commitment failed');
