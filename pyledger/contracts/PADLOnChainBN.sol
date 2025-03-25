@@ -94,7 +94,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
     }
     */
 
-    function isPermitted(address _add) public override returns (bool){
+    function isPermitted(address _add) public view override returns (bool){
         return participants[_add];
     }
 
@@ -138,7 +138,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
     /// @dev function to store participants PADL public key on the contract
     /// @param _pk public key of participant
     /// @param _add ethereum address of participant
-    function storePublicKey(string memory _pk, address _add) public override {
+    function storePublicKey(string memory _pk, address _add) public override onlyByParticipants {
         zkledgerPks[_add] = _pk;
     }
 
@@ -254,7 +254,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
     }
 
     function approveTxn() public override onlyByParticipants{
-        bool a = checkTxnApproval();
+        checkTxnApproval();
         if (majorityvotes){
             ledger.push(identifier);
 
@@ -294,7 +294,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
     /// @dev function to retrieve state of a participant
     /// @param p participant id
     /// @return state of a participant on the contract (commitment-token tuple)
-    function retrieveStateId(uint256 p) public override returns (PADLOnChainInterface.cmtk[] memory){
+    function retrieveStateId(uint256 p) public view override returns (PADLOnChainInterface.cmtk[] memory){
         return (state[allParticipants[p]]);
     }
 
@@ -334,7 +334,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
         return true;
     }
 
-    function checkSenderCell(PADLOnChainInterface.txcell memory ctxid, address add, BN254Point memory h2rd) public override returns (bool){
+    function checkSenderCell(PADLOnChainInterface.txcell memory ctxid, BN254Point memory h2rd) public override returns (bool){
         require(eqp.verify(ctxid.peq, h2rd), 'Proof of asset failed');
         require(csp.verify(ctxid.pc_), 'Proof of consistency of complimentary commit failed');
         require(rng.verify_range_proof(ctxid.ppositive), 'Proof of positive commitment failed');
