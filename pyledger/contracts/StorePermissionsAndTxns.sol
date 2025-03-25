@@ -112,7 +112,7 @@ contract StorePermissionsAndTxns{
     return gov_rules;
   }
 
-  function isPermitted(address _add) public returns(bool){
+  function isPermitted(address _add) public view returns(bool){
     return participants[_add];
   }
 
