@@ -1,0 +1,23 @@
+name: Slither Static Analysis
+
+on:
+  push:
+    paths:
+      - 'pyledger/contracts/PADLOnChainBN.sol'
+  pull_request:
+    paths:
+      - 'pyledger/contracts/PADLOnChainBN.sol'
+
+jobs:
+  slither:
+    name: Run Slither Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Run Slither on PADLOnChainBN.sol
+        uses: crytic/slither-action@v0.2.0
+        with:
+          target: pyledger/contracts/PADLOnChainBN.sol
