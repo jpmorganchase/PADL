@@ -59,6 +59,12 @@ contract PADLOnChainBN is PADLOnChainInterface{
         address _rngaddress;
     }
 
+    event TxnApprovedByIssuer(string identifier);
+    event TxnApprovedByParticipants(string identifier, uint256 voteCount);
+    event StateUpdated(string identifier, uint256 timestamp);
+    event TxnApprovalChecked(bool majority, uint256 voteCount);
+
+
     constructor(initargs memory init){
         bn = BNInterface(init._bnaddress);
         bnaddress = init._bnaddress;
@@ -232,6 +238,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
         else{
             majorityvotes = false;
         }
+        emit TxnApprovalChecked(majorityvotes, voteCount);
         return majorityvotes;
     }
     function resetVotes() public override{
@@ -254,6 +261,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
             }
         }
         delete commitsTokens;
+        emit StateUpdated(identifier, block.timestamp);
     }
 
     function approveTxn() public override onlyByParticipants{
@@ -263,12 +271,14 @@ contract PADLOnChainBN is PADLOnChainInterface{
 
             updateState();
             clearTxn();
+            emit TxnApprovedByParticipants(identifier, voteCount);
         }
     }
     function approveTxnIssuer() public override onlyByIssuer {
         ledger.push(identifier);
         clearTxn();
         updateState();
+        emit TxnApprovedByIssuer(identifier);
     }
     function clearTxn() public override onlyByIssuerOrParticipant(){
         // delete txn;

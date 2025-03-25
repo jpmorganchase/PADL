@@ -40,6 +40,7 @@ contract StorePermissionsAndTxns{
   string public gov_rules='';
 
 
+  event GovRulesUpdated(address issuer, string newRules);
 
   mapping (address => string) public reqs;
   mapping (address => uint) public reqs_amounts;
@@ -106,6 +107,7 @@ contract StorePermissionsAndTxns{
 
   function setGovRules(string memory gov) virtual public onlyByIssuer{
       gov_rules = gov;
+      emit GovRulesUpdated(msg.sender, gov);
   }
 
   function retrieveGovarnenceRules() public view returns(string memory){    
