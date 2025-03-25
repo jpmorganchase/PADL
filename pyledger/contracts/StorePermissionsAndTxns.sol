@@ -33,7 +33,7 @@ contract StorePermissionsAndTxns{
   string[] public rough;
   string[] public pks;
   bool public askForApproval;
-  uint256 deadline;
+  uint256 deadline = 0;
   bool public majorityvotes;
   string public commitsTokens;
   uint public test=2;
