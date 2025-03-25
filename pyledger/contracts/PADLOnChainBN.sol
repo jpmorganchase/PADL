@@ -187,9 +187,10 @@ contract PADLOnChainBN is PADLOnChainInterface{
     }
 
     function storeIntCMTK(PADLOnChainInterface.cmtk[][] memory _p) public override{
+        require(_p.length > 0, "P array is empty");
         delete commitsTokens;
         for (uint256 temp_asset_index = 0; temp_asset_index < _p.length; temp_asset_index++){
-
+            require(_p[temp_asset_index].length > 0, "One of the inner arrays is empty");
             commitsTokens.push();
             for (uint256 p = 0; p < _p[0].length; p++){
 
@@ -304,6 +305,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
     }
 
     function processTx(PADLOnChainInterface.txcell[] memory ctx, uint256 asset_id) public override onlyByParticipants returns (bool) {
+        require(allParticipants.length > 0, "No participants in contract");
         require(ctx.length == allParticipants.length, "Length of transaction not equal to length of participants");
         // proof of balance
         BN254Point memory sum_cm = ctx[0].cm;
