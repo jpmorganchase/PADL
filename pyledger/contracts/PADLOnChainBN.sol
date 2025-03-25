@@ -14,45 +14,24 @@ import "./Interfaces/EquivalenceProofInterface.sol";
 contract PADLOnChainBN is PADLOnChainInterface{
 
     address bnaddress;
-    address eqaddress;
-    address consaddress;
 
-    address rngaddress;
     BNInterface bn;
     EquivalenceProofInterface eqp;
     ConsistencyProofInterface csp;
     RangeProofInterface rng;
 
     uint8 public constant totalAsset= 8;
-    uint8 public constant default_asset_id = 0;
-    PADLOnChainInterface.cmtk[] public cur_asset_commits_tokens;
-
-    uint256 constant gy = 0x211f2c237d907e6e11073f667fb026085665bb1ba108518ddd23bebfbe896ca5;
-    uint256 constant gx = 0x2f9fb7e98cc14aced65e3f4e0871e0a012a699c8f474e2286fce8b97adfad91a;
-    uint256 constant hx = 0x1;
-    uint256 constant hy = 0x2;
 
     address Issuer;
     uint256 totalSupply;
     mapping(address => PADLOnChainInterface.cmtk[]) state; // state of the contract
-    mapping(address => PADLOnChainInterface.cmtk[]) tempzl;
     mapping(address => uint256) allids;
     address[] public allParticipants;
-    PADLOnChainInterface.txcell[] public currenttx;
-    BN254Point public newcm;
-    BN254Point public newtk;
-    BN254Point public sumcm;
-    BN254Point public sumtk;
-    BN254Point public tempcm;
     BN254Point public updatedstatecm;
     BN254Point public updatedstatetk;
     string public identifier;
 
-    PADLOnChainInterface.cmtk[] public intzl;
-    uint256 public sval = 10;
-
     PADLOnChainInterface.cmtk cmtk_temp;
-    mapping(address => PADLOnChainInterface.cmtk) public zlnotuseful;
     mapping(address => string) public zl;
     mapping(address => string) public reqs;
     mapping(address => uint) public reqs_amounts;
