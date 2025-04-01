@@ -21,3 +21,4 @@ jobs:
         uses: crytic/slither-action@v0.2.0
         with:
           target: pyledger/contracts/PADLOnChainBN.sol
+          slither-config: slither.config.json
