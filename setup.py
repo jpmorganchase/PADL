@@ -38,9 +38,11 @@ def replace_in_file(file_path):
         with open(file_path, 'r') as file:
             file_content = file.read()
 
-        # Perform the replacements
-        updated_content = file_content.replace('Secp256k1', 'Bn254').replace('secp256_k1', 'bn254')
-
+        # Perform the replacements including adding commit to challange due to frozenheart 2022 in bulletproofs
+        updated_content = (((file_content.replace('Secp256k1', 'Bn254').replace('secp256_k1', 'bn254').
+                           replace(".chain_points([&T1, &T2, G, H])",".chain_points([&T1, &T2, G, H]).chain_points(&ped_com_vec)")).
+                           replace(".chain_points([&self.T1, &self.T2, G, H])",".chain_points([&self.T1, &self.T2, G, H]).chain_points(ped_com)")).
+                           replace("let num_of_proofs = secret.len();","let num_of_proofs = secret.len(); let ped_com_vec = (0..num_of_proofs).map(|i| &*G * &secret[i] + H * &blinding[i]).collect::<Vec<Point<Bn254>>>();"))
         # Write the updated content back to the file
         with open(file_path, 'w') as file:
             file.write(updated_content)
@@ -77,8 +79,8 @@ class InstallCommand(Command):
 
             replace_in_file("zkbp_module/bulletproofs/src/proofs/inner_product.rs")
             replace_in_file("zkbp_module/bulletproofs/src/proofs/range_proof.rs")
-            replace_in_file("zkbp_module/bulletproofs/src/proofs/range_proof_wip.rs")
-            replace_in_file("zkbp_module/bulletproofs/src/proofs/weighted_inner_product.rs")
+            # replace_in_file("zkbp_module/bulletproofs/src/proofs/range_proof_wip.rs")
+            # replace_in_file("zkbp_module/bulletproofs/src/proofs/weighted_inner_product.rs")
 
             # Run the sed command to replace '&8' with '8' in the specified file
             file_path="./zkbp_module/curv/src/arithmetic/big_native/primes.rs"
@@ -151,7 +153,7 @@ def run_test():
     test_suite = test_loader.discover('tests')
     test_runner = unittest.TextTestRunner(verbosity=2)
     test_runner.run(test_suite)
-    clean()
+    #clean()
 
 def clean():
     # Define patterns for files to remove
