@@ -237,6 +237,7 @@ contract Bulletproof is RangeProofInterface {
                 ux_c = bn254.add(ux_c, bn254.add(bn254.mul(proof.g_vec[counter],  mulmod(s[counter], proof.a_tag, order)), bn254.mul(hi[counter],mulmod(s_inv[counter],proof.b_tag,order)) ) );
             }
 
+            emit DebugValues(ux_c.x, P.x, ux_c.y, P.y);
             require(ux_c.x == P.x && ux_c.y == P.y,'IP fail in range proof');
 
             // uint256[bits_length] memory a_time_s;

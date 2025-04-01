@@ -24,10 +24,23 @@ contract Auction is PADLOnChain{
 
   // overriding default to include deadline
   function  approveTxnIssuer() public override onlyByIssuer{
+    if (block.timestamp >= auctionEndTime) {
+        auctionOpenBool = false;
+        emit auctionClosed("Auction closed", ledger.length);
+        revert("Auction ended");
+    }
       require(block.timestamp < auctionEndTime, 'Auction ended');
       ledger.push(identifier);
       clearTxn();
       emit TxnApprovedByIssuer(identifier);
   }
+
+    function closeAuction() public onlyByIssuer {
+      require(block.timestamp >= auctionEndTime, "Auction still active");
+      require(auctionOpenBool == true, "Auction already closed");
+      auctionOpenBool = false;
+      emit auctionClosed("Auction closed", ledger.length); // or pass any relevant ID
+  }
+
 
 }
