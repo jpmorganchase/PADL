@@ -236,7 +236,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
     }
 
     function checkTxnApproval() public override returns(bool){
-        if (voteCount > (allParticipants.length - 1)){
+        if (voteCount > (allParticipants.length/2 - 1)){
             majorityvotes = true;
         }
         else{
