@@ -13,6 +13,7 @@ contract Auction is PADLOnChain{
 
   string name;
   uint auctionEndTime;
+  uint256 constant BUFFER_TIME = 30;
 
   event TxnApprovedByIssuer(string identifier);
 
@@ -24,13 +25,13 @@ contract Auction is PADLOnChain{
 
   // overriding default to include deadline
   function  approveTxnIssuer() public override onlyByIssuer{
-    if (block.timestamp >= auctionEndTime) {
-        auctionOpenBool = false;
-        emit auctionClosed("Auction closed", ledger.length);
-        revert("Auction ended");
-    }
-    require(bytes(identifier).length > 0, "Invalid identifier");
-      require(block.timestamp < auctionEndTime, 'Auction ended');
+      if (block.timestamp >= auctionEndTime + BUFFER_TIME) {
+          auctionOpenBool = false;
+          emit auctionClosed("Auction closed", ledger.length);
+          revert("Auction ended");
+      }
+      require(bytes(identifier).length > 0, "Invalid identifier");
+      require(block.timestamp < auctionEndTime + BUFFER_TIME, 'Auction ended');
       ledger.push(identifier);
       clearTxn();
       emit TxnApprovedByIssuer(identifier);
