@@ -29,6 +29,7 @@ contract Auction is PADLOnChain{
         emit auctionClosed("Auction closed", ledger.length);
         revert("Auction ended");
     }
+    require(bytes(identifier).length > 0, "Invalid identifier");
       require(block.timestamp < auctionEndTime, 'Auction ended');
       ledger.push(identifier);
       clearTxn();
