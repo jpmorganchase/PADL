@@ -1,4 +1,4 @@
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.28;
 import "./PADLOnChain.sol";
 /// @title A wrapper for auction, including the ending time of opening the auction and issuer approve the transaction
 /// @author Applied research, Global Tech., JPMorgan Chase, London
@@ -13,6 +13,7 @@ contract Auction is PADLOnChain{
 
   string name;
   uint auctionEndTime;
+  uint256 constant BUFFER_TIME = 30;
 
   event TxnApprovedByIssuer(string identifier);
 
@@ -24,10 +25,24 @@ contract Auction is PADLOnChain{
 
   // overriding default to include deadline
   function  approveTxnIssuer() public override onlyByIssuer{
-      require(block.timestamp < auctionEndTime, 'Auction ended');
+      if (block.timestamp >= auctionEndTime + BUFFER_TIME) {
+          auctionOpenBool = false;
+          emit auctionClosed("Auction closed", ledger.length);
+          revert("Auction ended");
+      }
+      require(bytes(identifier).length > 0, "Invalid identifier");
+      require(block.timestamp < auctionEndTime + BUFFER_TIME, 'Auction ended');
       ledger.push(identifier);
       clearTxn();
       emit TxnApprovedByIssuer(identifier);
   }
+
+    function closeAuction() public onlyByIssuer {
+      require(block.timestamp >= auctionEndTime, "Auction still active");
+      require(auctionOpenBool == true, "Auction already closed");
+      auctionOpenBool = false;
+      emit auctionClosed("Auction closed", ledger.length); // or pass any relevant ID
+  }
+
 
 }
