@@ -116,6 +116,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
     /// @param _zl zero line
     /// @param _amt amount of coins minted (initial balance)
     function addRequests(address _add, string memory _zl, uint _amt) public override onlyByIssuer {
+        require(_add != address(0), "Invalid address");
         reqs[_add] = _zl;
         reqs_amounts[_add] = _amt;
     }
@@ -123,6 +124,8 @@ contract PADLOnChainBN is PADLOnChainInterface{
     /// @dev function to add a participant to contract. Gives access to the functionalities of the contract
     /// @param _add ethereum address of participant
     function addParticipant(address _add) public override onlyByIssuer {
+        require(!participants[_add], "Participant already added");
+        require(_add != address(0), "Invalid address"); // not null addr
         participants[_add] = true;
         txnApproval[_add] = false;
         allParticipants.push(_add);
@@ -187,6 +190,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
     /// @param _zl zero line in string format
     /// @param _add ethereum address
     function addZeroLine(string memory _zl, address _add) public override onlyByIssuer {
+        require(_add != address(0), "Invalid address");
         zl[_add] = _zl;
     }
 
