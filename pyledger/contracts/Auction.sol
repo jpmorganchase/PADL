@@ -1,4 +1,4 @@
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.28;
 import "./PADLOnChain.sol";
 /// @title A wrapper for auction, including the ending time of opening the auction and issuer approve the transaction
 /// @author Applied research, Global Tech., JPMorgan Chase, London
