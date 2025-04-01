@@ -159,7 +159,7 @@ class EvmLedger(MakeLedger):
         return tx_receipt.contractAddress
 
     def deploy_all_zkcontracts(self):
-        bncontract_dict = {"contract_location": "ZK_Proof/",
+        bncontract_dict = {"contract_location": "ZK_proof/",
                               "contract_name": "BN254",
                               "file_name": "bn254.sol",
                               "args": None}

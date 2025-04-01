@@ -71,6 +71,7 @@ contract Bulletproof is RangeProofInterface {
         for (uint8 counter=1; counter< bits_length; counter++){
             arr[counter] = mulmod(arr[counter-1],step,order);
         }
+        return arr;
     }
     function iterate_with_sum(uint256 step) internal returns (uint256[bits_length] memory arr, uint256){
         arr[0] = 1;

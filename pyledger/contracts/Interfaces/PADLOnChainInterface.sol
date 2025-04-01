@@ -31,7 +31,7 @@ abstract contract PADLOnChainInterface {
         Rangeproof ppositive;
     }
 
-    function isPermitted(address _add) public virtual returns (bool);
+    function isPermitted(address _add) public view virtual returns (bool);
     function addRequests(address _add, string memory _zl, uint _amt) public virtual;
     function addParticipant(address _add) public virtual;
     function getTotalBalance() public virtual view returns (uint);

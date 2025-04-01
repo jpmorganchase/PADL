@@ -33,13 +33,14 @@ contract StorePermissionsAndTxns{
   string[] public rough;
   string[] public pks;
   bool public askForApproval;
-  uint256 deadline;
+  uint256 deadline = 0;
   bool public majorityvotes;
   string public commitsTokens;
   uint public test=2;
   string public gov_rules='';
 
 
+  event GovRulesUpdated(address issuer, string newRules);
 
   mapping (address => string) public reqs;
   mapping (address => uint) public reqs_amounts;
@@ -106,13 +107,14 @@ contract StorePermissionsAndTxns{
 
   function setGovRules(string memory gov) virtual public onlyByIssuer{
       gov_rules = gov;
+      emit GovRulesUpdated(msg.sender, gov);
   }
 
   function retrieveGovarnenceRules() public view returns(string memory){    
     return gov_rules;
   }
 
-  function isPermitted(address _add) public returns(bool){
+  function isPermitted(address _add) public view returns(bool){
     return participants[_add];
   }
 

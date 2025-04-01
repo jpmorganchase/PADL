@@ -14,6 +14,8 @@ contract Auction is PADLOnChain{
   string name;
   uint auctionEndTime;
 
+  event TxnApprovedByIssuer(string identifier);
+
   function setEndTime(uint endTime) public onlyByIssuer{
     auctionEndTime = block.timestamp + endTime;
     auctionOpenBool = true;
@@ -25,6 +27,7 @@ contract Auction is PADLOnChain{
       require(block.timestamp < auctionEndTime, 'Auction ended');
       ledger.push(identifier);
       clearTxn();
+      emit TxnApprovedByIssuer(identifier);
   }
 
 }

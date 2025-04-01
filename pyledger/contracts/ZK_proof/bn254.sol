@@ -5,9 +5,9 @@ pragma solidity ^0.8.19;
 
 import "../Interfaces/BNInterface.sol";
 
-contract BN254 {
+contract BN254 is BNInterface{
 
-    function add(BN254Point calldata point1, BN254Point calldata point2) public returns (BN254Point memory ret){
+    function add(BN254Point calldata point1, BN254Point calldata point2) public view override returns (BN254Point memory ret){
         uint256[4] memory data=[point1.x,point1.y,point2.x,point2.y];
         // bytes memory data = abi.encodePacked(point1.x,point1.y,point2.x,point2.y);
         bool success;
@@ -19,7 +19,7 @@ contract BN254 {
         return ret;
     }
 
-    function mul(BN254Point calldata point1, uint256 scalar) public returns (BN254Point memory ret){
+    function mul(BN254Point calldata point1, uint256 scalar) public view override returns (BN254Point memory ret){
         uint256[3] memory data= [point1.x, point1.y, scalar];
         // bytes memory data = abi.encodePacked(point1.x,point1.y,point2.x,point2.y);
         bool success;
@@ -31,7 +31,7 @@ contract BN254 {
         return ret;
     }
 
-    function neg(BN254Point calldata p) public returns (BN254Point memory) {
+    function neg(BN254Point calldata p) public pure override returns (BN254Point memory) {
         if (p.x == 0 && p.y == 0)
             return BN254Point(0, 0);
         uint256 n = 21888242871839275222246405745257275088696311157297823662689037894645226208583;

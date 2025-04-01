@@ -59,11 +59,11 @@ contract ConsistencyProofBN is ConsistencyProofInterface {
     /// @param b  is an initial byte variable to which additional data can be concatenated.
     /// @param x  is the first 256-bit unsigned integer to be concatenated.
     /// @param y  is the second 256-bit unsigned integer to be concatenated.
-    function pushPointToHash(bytes memory b, uint256 x, uint256 y) public override returns(bytes memory) {
+    function pushPointToHash(bytes memory b, uint256 x, uint256 y) public view override returns(bytes memory) {
         return abi.encodePacked(b, y,x);
     }
 
-    function closeHash(bytes memory b) public override returns (uint256){
+    function closeHash(bytes memory b) public view override returns (uint256){
         return uint256(sha256(abi.encodePacked(b, zerobytes)))  % order;
     }
 
