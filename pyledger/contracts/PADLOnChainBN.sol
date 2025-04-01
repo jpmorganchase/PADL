@@ -189,7 +189,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
     /// @dev function to add zero line for a participant
     /// @param _zl zero line in string format
     /// @param _add ethereum address
-    function addZeroLine(string memory _zl, address _add) public override onlyByIssuer {
+    function addZeroLine(string memory _zl, address _add) public override {
         require(_add != address(0), "Invalid address");
         zl[_add] = _zl;
     }
@@ -245,7 +245,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
         emit TxnApprovalChecked(majorityvotes, voteCount);
         return majorityvotes;
     }
-    function resetVotes() public override{
+    function resetVotes() internal override{
         for(uint256 i=0; i<allParticipants.length;i++){
             address addr = allParticipants[i];
             txnApproval[addr] = false;
@@ -274,6 +274,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
             ledger.push(identifier);
 
             updateState();
+            resetVotes();
             clearTxn();
             emit TxnApprovedByParticipants(identifier, voteCount);
         }

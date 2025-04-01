@@ -49,7 +49,7 @@ abstract contract PADLOnChainInterface {
     function retrieveIdentifier() public virtual returns(string memory);
     function voteTxn() public virtual;
     function checkTxnApproval() public virtual returns(bool);
-    function resetVotes() public virtual;
+    function resetVotes() internal virtual;
     function updateState() public virtual;
     function approveTxn() public virtual;
     function approveTxnIssuer() virtual public ;
