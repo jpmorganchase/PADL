@@ -230,7 +230,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
     }
 
     function voteTxn() public override onlyByParticipants{
-        require(!txnApproval[msg.sender], "Already voted");
+        // require(!txnApproval[msg.sender], "Already voted");
         txnApproval[msg.sender] = true;
         voteCount += 1;
     }
