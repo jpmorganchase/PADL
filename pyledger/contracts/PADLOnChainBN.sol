@@ -40,7 +40,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
     mapping(address => bool) public participants;
 
     PADLOnChainInterface.cmtk[][] public commitsTokens;
-    bool public majorityvotes;
+    bool public allvotes;
     string[] public ledger; // ledger as arrays of hashes
     uint8 public constant preg = 0x2;
     string public gov_rules='';
@@ -236,14 +236,14 @@ contract PADLOnChainBN is PADLOnChainInterface{
     }
 
     function checkTxnApproval() public override returns(bool){
-        if (voteCount > (allParticipants.length/2 - 1)){
-            majorityvotes = true;
+        if (voteCount > (allParticipants.length - 1)){
+            allvotes = true;
         }
         else{
-            majorityvotes = false;
+            allvotes = false;
         }
-        emit TxnApprovalChecked(majorityvotes, voteCount);
-        return majorityvotes;
+        emit TxnApprovalChecked(allvotes, voteCount);
+        return allvotes;
     }
     function resetVotes() internal override{
         for(uint256 i=0; i<allParticipants.length;i++){
@@ -270,7 +270,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
 
     function approveTxn() public override onlyByParticipants{
         checkTxnApproval();
-        if (majorityvotes){
+        if (allvotes){
             ledger.push(identifier);
 
             updateState();
