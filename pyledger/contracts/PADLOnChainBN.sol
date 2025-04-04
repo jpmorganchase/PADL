@@ -40,7 +40,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
     mapping(address => bool) public participants;
 
     PADLOnChainInterface.cmtk[][] public commitsTokens;
-    bool public majorityvotes;
+    bool public allvotes;
     string[] public ledger; // ledger as arrays of hashes
     uint8 public constant preg = 0x2;
     string public gov_rules='';
@@ -50,6 +50,8 @@ contract PADLOnChainBN is PADLOnChainInterface{
     BN254Point public h2r;
 
     uint256 public voteCount;
+
+    bool public isTxnInProgress;
 
     struct initargs {
         uint256 _totalSupply;
@@ -214,6 +216,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
 
             }
         }
+        isTxnInProgress = false;
     }
 
     function addstorageidentifier(string memory _idnt) public override{
@@ -230,20 +233,22 @@ contract PADLOnChainBN is PADLOnChainInterface{
     }
 
     function voteTxn() public override onlyByParticipants{
-        require(!txnApproval[msg.sender], "Already voted");
+        // require(!txnApproval[msg.sender], "Already voted");
+
         txnApproval[msg.sender] = true;
         voteCount += 1;
     }
 
     function checkTxnApproval() public override returns(bool){
-        if (voteCount > (allParticipants.length/2 - 1)){
-            majorityvotes = true;
+        require(isTxnInProgress, "No txn is in progress");
+        if (voteCount > (allParticipants.length - 1)){
+            allvotes = true;
         }
         else{
-            majorityvotes = false;
+            allvotes = false;
         }
-        emit TxnApprovalChecked(majorityvotes, voteCount);
-        return majorityvotes;
+        emit TxnApprovalChecked(allvotes, voteCount);
+        return allvotes;
     }
     function resetVotes() internal override{
         for(uint256 i=0; i<allParticipants.length;i++){
@@ -266,11 +271,12 @@ contract PADLOnChainBN is PADLOnChainInterface{
         }
         delete commitsTokens;
         emit StateUpdated(identifier, block.timestamp);
+        isTxnInProgress = false;
     }
 
     function approveTxn() public override onlyByParticipants{
         checkTxnApproval();
-        if (majorityvotes){
+        if (allvotes){
             ledger.push(identifier);
 
             updateState();
@@ -278,12 +284,14 @@ contract PADLOnChainBN is PADLOnChainInterface{
             clearTxn();
             emit TxnApprovedByParticipants(identifier, voteCount);
         }
+        isTxnInProgress = false;
     }
     function approveTxnIssuer() public override onlyByIssuer {
         ledger.push(identifier);
         clearTxn();
         updateState();
         emit TxnApprovedByIssuer(identifier);
+        isTxnInProgress = false;
     }
     function clearTxn() public override onlyByIssuerOrParticipant(){
         // delete txn;
@@ -320,6 +328,8 @@ contract PADLOnChainBN is PADLOnChainInterface{
         require(allParticipants.length > 0, "No participants in contract");
         require(ctx.length == allParticipants.length, "Length of transaction not equal to length of participants");
         // proof of balance
+        require(!isTxnInProgress, "Cant process new tx. Transaction already in progress");
+        isTxnInProgress = true;
         BN254Point memory sum_cm = ctx[0].cm;
         for (uint256 p = 1; p < allParticipants.length; p++) {
             sum_cm =  bn.add(ctx[p].cm, sum_cm);
@@ -349,7 +359,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
         {
             ledger.push(identifier);
         }
-
+        isTxnInProgress = false;
         return true;
     }
 
