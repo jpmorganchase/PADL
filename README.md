@@ -16,7 +16,7 @@ PADL is based on zero-knowledge proofs for inter-parties framework for exploring
 
 ### PADL Installation
 for zkbp:
-pip install zkbp
+pip `install zkbp`
 
 from source:
 clone and run `python setup.py init`
