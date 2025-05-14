@@ -73,7 +73,7 @@ class InstallCommand(Command):
             # add 254bn wrapper for curv lib
             [shutil.copy(file, "zkbp_module/curv/src/elliptic/curves/") for file in
             glob.glob("zkbp_module/src/curv_ext/*")]
-            update_cargo_toml("zkbp_module/curv/cargo.toml")
+            update_cargo_toml("zkbp_module/curv/Cargo.toml")
 
             replace_in_file("zkbp_module/bulletproofs/src/proofs/inner_product.rs")
             replace_in_file("zkbp_module/bulletproofs/src/proofs/range_proof.rs")
