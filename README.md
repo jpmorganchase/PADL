@@ -15,9 +15,13 @@ PADL is based on zero-knowledge proofs for inter-parties framework for exploring
 2. For testing on EVM smart contracts: `nodejs`, and for local evm testing env., for example ganache-cli or geth.
 
 ### PADL Installation
-3. run `python setup.py init`
-See more examples (pyledger/examples), and tutorials under (./tutorials).
+for zkbp:
+pip install zkbp
 
+from source:
+clone and run `python setup.py init`
+
+See more examples (pyledger/examples), and tutorials under (./tutorials).
 ## PADL Paper
 https://arxiv.org/abs/2501.03808
 
