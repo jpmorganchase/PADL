@@ -48,6 +48,7 @@ contract PadlTokenBN is ERC20 {
     }
 
     function storeCell(PADLOnChainInterface.txcell[] memory storecelltemp) public {
+        require(storecelltemp.length > 0, "Input txcell array is empty");
         storecell = storecelltemp[0];
     }
 

@@ -38,11 +38,13 @@ def replace_in_file(file_path):
         with open(file_path, 'r') as file:
             file_content = file.read()
 
+        # Perform the replacements
         # Perform the replacements including adding commit to challange due to frozenheart 2022 in bulletproofs
         updated_content = (((file_content.replace('Secp256k1', 'Bn254').replace('secp256_k1', 'bn254').
-                           replace(".chain_points([&T1, &T2, G, H])",".chain_points([&T1, &T2, G, H]).chain_points(&ped_com_vec)")).
-                           replace(".chain_points([&self.T1, &self.T2, G, H])",".chain_points([&self.T1, &self.T2, G, H]).chain_points(ped_com)")).
-                           replace("let num_of_proofs = secret.len();","let num_of_proofs = secret.len(); let ped_com_vec = (0..num_of_proofs).map(|i| &*G * &secret[i] + H * &blinding[i]).collect::<Vec<Point<Bn254>>>();"))
+        replace(".chain_points([&T1, &T2, G, H])",".chain_points([&T1, &T2, G, H]).chain_points(&ped_com_vec)")).
+        replace(".chain_points([&self.T1, &self.T2, G, H])",".chain_points([&self.T1, &self.T2, G, H]).chain_points(ped_com)")).
+        replace("let num_of_proofs = secret.len();","let num_of_proofs = secret.len(); let ped_com_vec = (0..num_of_proofs).map(|i| &*G * &secret[i] + H * &blinding[i]).collect::<Vec<Point<Bn254>>>();"))
+
         # Write the updated content back to the file
         with open(file_path, 'w') as file:
             file.write(updated_content)
@@ -62,7 +64,7 @@ class InstallCommand(Command):
     def finalize_options(self):
         pass
     def run(self):
-        subprocess.check_call([sys.executable, "-m", "pip", "install", 'toml', 'maturin', 'Flask', 'numpy'])
+        subprocess.check_call([sys.executable, "-m", "pip", "install", 'toml', 'maturin','web3==5.18.0', 'py-solc-x', 'Flask', 'numpy', 'eth-account', 'requests'])
         try:
             # clone kzen curv and bulletproofs and extend them to bn254, and additional proofs.
             if not os.path.exists("zkbp_module/curv"):
@@ -75,12 +77,10 @@ class InstallCommand(Command):
             # add 254bn wrapper for curv lib
             [shutil.copy(file, "zkbp_module/curv/src/elliptic/curves/") for file in
             glob.glob("zkbp_module/src/curv_ext/*")]
-            update_cargo_toml("zkbp_module/curv/cargo.toml")
+            update_cargo_toml("zkbp_module/curv/Cargo.toml")
 
             replace_in_file("zkbp_module/bulletproofs/src/proofs/inner_product.rs")
             replace_in_file("zkbp_module/bulletproofs/src/proofs/range_proof.rs")
-            # replace_in_file("zkbp_module/bulletproofs/src/proofs/range_proof_wip.rs")
-            # replace_in_file("zkbp_module/bulletproofs/src/proofs/weighted_inner_product.rs")
 
             # Run the sed command to replace '&8' with '8' in the specified file
             file_path="./zkbp_module/curv/src/arithmetic/big_native/primes.rs"
@@ -153,7 +153,7 @@ def run_test():
     test_suite = test_loader.discover('tests')
     test_runner = unittest.TextTestRunner(verbosity=2)
     test_runner.run(test_suite)
-    #clean()
+    clean()
 
 def clean():
     # Define patterns for files to remove
@@ -200,6 +200,8 @@ setup(
         'numpy',
         'web3==5.18.0',
         'py-solc-x',
+        'eth-account',
+        'requests'
     ],
     cmdclass={
         'init': InstallCommand,

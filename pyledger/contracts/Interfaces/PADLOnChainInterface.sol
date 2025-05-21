@@ -1,7 +1,7 @@
 /// @title Private and auditable transaction via on-chain verification
 /// @author Applied research, Global Tech., JPMorgan Chase, London
 /// @notice This is an code for research and experimentation.
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.28;
 
 //import "../ZK_proof/bn254.sol";
 //import {Bulletproof} from "../ZK_proof/RangeVerifier.sol";
@@ -31,7 +31,7 @@ abstract contract PADLOnChainInterface {
         Rangeproof ppositive;
     }
 
-    function isPermitted(address _add) public virtual returns (bool);
+    function isPermitted(address _add) public view virtual returns (bool);
     function addRequests(address _add, string memory _zl, uint _amt) public virtual;
     function addParticipant(address _add) public virtual;
     function getTotalBalance() public virtual view returns (uint);
@@ -49,7 +49,7 @@ abstract contract PADLOnChainInterface {
     function retrieveIdentifier() public virtual returns(string memory);
     function voteTxn() public virtual;
     function checkTxnApproval() public virtual returns(bool);
-    function resetVotes() public virtual;
+    function resetVotes() internal virtual;
     function updateState() public virtual;
     function approveTxn() public virtual;
     function approveTxnIssuer() virtual public ;

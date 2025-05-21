@@ -1,58 +1,37 @@
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.28;
 /// @title Private and auditable transaction via on-chain verification
 /// @author Applied research, Global Tech., JPMorgan Chase, London
 /// @notice This is an code for research and experimentation.
 
 
 import "./Interfaces/PADLOnChainInterface.sol";
-import "../Interfaces/RangeProofInterface.sol";
-import "../Interfaces/BNInterface.sol";
-import "../Interfaces/ConsistencyProofInterface.sol";
-import "../Interfaces/EquivalenceProofInterface.sol";
+import "./Interfaces/RangeProofInterface.sol";
+import "./Interfaces/BNInterface.sol";
+import "./Interfaces/ConsistencyProofInterface.sol";
+import "./Interfaces/EquivalenceProofInterface.sol";
 //import "./ZK_proof/RangeProofVer.sol";
 
 contract PADLOnChainBN is PADLOnChainInterface{
 
     address bnaddress;
-    address eqaddress;
-    address consaddress;
 
-    address rngaddress;
     BNInterface bn;
     EquivalenceProofInterface eqp;
     ConsistencyProofInterface csp;
     RangeProofInterface rng;
 
     uint8 public constant totalAsset= 8;
-    uint8 public constant default_asset_id = 0;
-    PADLOnChainInterface.cmtk[] public cur_asset_commits_tokens;
-
-    uint256 constant gy = 0x211f2c237d907e6e11073f667fb026085665bb1ba108518ddd23bebfbe896ca5;
-    uint256 constant gx = 0x2f9fb7e98cc14aced65e3f4e0871e0a012a699c8f474e2286fce8b97adfad91a;
-    uint256 constant hx = 0x1;
-    uint256 constant hy = 0x2;
 
     address Issuer;
     uint256 totalSupply;
     mapping(address => PADLOnChainInterface.cmtk[]) state; // state of the contract
-    mapping(address => PADLOnChainInterface.cmtk[]) tempzl;
     mapping(address => uint256) allids;
     address[] public allParticipants;
-    PADLOnChainInterface.txcell[] public currenttx;
-    BN254Point public newcm;
-    BN254Point public newtk;
-    BN254Point public sumcm;
-    BN254Point public sumtk;
-    BN254Point public tempcm;
     BN254Point public updatedstatecm;
     BN254Point public updatedstatetk;
     string public identifier;
 
-    PADLOnChainInterface.cmtk[] public intzl;
-    uint256 public sval = 10;
-
     PADLOnChainInterface.cmtk cmtk_temp;
-    mapping(address => PADLOnChainInterface.cmtk) public zlnotuseful;
     mapping(address => string) public zl;
     mapping(address => string) public reqs;
     mapping(address => uint) public reqs_amounts;
@@ -61,7 +40,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
     mapping(address => bool) public participants;
 
     PADLOnChainInterface.cmtk[][] public commitsTokens;
-    bool public majorityvotes;
+    bool public allvotes;
     string[] public ledger; // ledger as arrays of hashes
     uint8 public constant preg = 0x2;
     string public gov_rules='';
@@ -70,6 +49,10 @@ contract PADLOnChainBN is PADLOnChainInterface{
 
     BN254Point public h2r;
 
+    uint256 public voteCount;
+
+    bool public isTxnInProgress;
+
     struct initargs {
         uint256 _totalSupply;
         address _bnaddress;
@@ -77,6 +60,12 @@ contract PADLOnChainBN is PADLOnChainInterface{
         address _consaddress;
         address _rngaddress;
     }
+
+    event TxnApprovedByIssuer(string identifier);
+    event TxnApprovedByParticipants(string identifier, uint256 voteCount);
+    event StateUpdated(string identifier, uint256 timestamp);
+    event TxnApprovalChecked(bool majority, uint256 voteCount);
+
 
     constructor(initargs memory init){
         bn = BNInterface(init._bnaddress);
@@ -100,6 +89,11 @@ contract PADLOnChainBN is PADLOnChainInterface{
         _;
     }
 
+    modifier onlyByIssuerOrParticipant {
+        require(msg.sender == Issuer || participants[msg.sender], "Not authorized");
+        _;
+    }
+
     /// @dev PADL transaction structure consists of a commitment, token, complimentary commitment, complimentary token,
     /// @dev proof of positive commitment, range proof, equivalence proof.
     /*
@@ -115,7 +109,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
     }
     */
 
-    function isPermitted(address _add) public override returns (bool){
+    function isPermitted(address _add) public view override returns (bool){
         return participants[_add];
     }
 
@@ -124,6 +118,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
     /// @param _zl zero line
     /// @param _amt amount of coins minted (initial balance)
     function addRequests(address _add, string memory _zl, uint _amt) public override onlyByIssuer {
+        require(_add != address(0), "Invalid address");
         reqs[_add] = _zl;
         reqs_amounts[_add] = _amt;
     }
@@ -131,6 +126,8 @@ contract PADLOnChainBN is PADLOnChainInterface{
     /// @dev function to add a participant to contract. Gives access to the functionalities of the contract
     /// @param _add ethereum address of participant
     function addParticipant(address _add) public override onlyByIssuer {
+        require(!participants[_add], "Participant already added");
+        require(_add != address(0), "Invalid address"); // not null addr
         participants[_add] = true;
         txnApproval[_add] = false;
         allParticipants.push(_add);
@@ -159,7 +156,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
     /// @dev function to store participants PADL public key on the contract
     /// @param _pk public key of participant
     /// @param _add ethereum address of participant
-    function storePublicKey(string memory _pk, address _add) public override {
+    function storePublicKey(string memory _pk, address _add) public override onlyByParticipants {
         zkledgerPks[_add] = _pk;
     }
 
@@ -195,6 +192,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
     /// @param _zl zero line in string format
     /// @param _add ethereum address
     function addZeroLine(string memory _zl, address _add) public override {
+        require(_add != address(0), "Invalid address");
         zl[_add] = _zl;
     }
 
@@ -203,9 +201,10 @@ contract PADLOnChainBN is PADLOnChainInterface{
     }
 
     function storeIntCMTK(PADLOnChainInterface.cmtk[][] memory _p) public override{
+        require(_p.length > 0, "P array is empty");
         delete commitsTokens;
         for (uint256 temp_asset_index = 0; temp_asset_index < _p.length; temp_asset_index++){
-
+            require(_p[temp_asset_index].length > 0, "One of the inner arrays is empty");
             commitsTokens.push();
             for (uint256 p = 0; p < _p[0].length; p++){
 
@@ -217,6 +216,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
 
             }
         }
+        isTxnInProgress = false;
     }
 
     function addstorageidentifier(string memory _idnt) public override{
@@ -233,33 +233,31 @@ contract PADLOnChainBN is PADLOnChainInterface{
     }
 
     function voteTxn() public override onlyByParticipants{
+        // require(!txnApproval[msg.sender], "Already voted");
+
         txnApproval[msg.sender] = true;
+        voteCount += 1;
     }
 
     function checkTxnApproval() public override returns(bool){
-        uint256 votescount = 0;
-        for(uint256 i = 0; i<allParticipants.length; i++){
-            address addr = allParticipants[i];
-            if (txnApproval[addr]) {
-            votescount = votescount + 1;
-            }
-        }
-        if (votescount > (allParticipants.length - 1)){
-            majorityvotes = true;
+        require(isTxnInProgress, "No txn is in progress");
+        if (voteCount > (allParticipants.length - 1)){
+            allvotes = true;
         }
         else{
-            majorityvotes = false;
+            allvotes = false;
         }
-        return majorityvotes;
+        emit TxnApprovalChecked(allvotes, voteCount);
+        return allvotes;
     }
-    function resetVotes() public override{
+    function resetVotes() internal override{
         for(uint256 i=0; i<allParticipants.length;i++){
             address addr = allParticipants[i];
             txnApproval[addr] = false;
         }
     }
 
-    function updateState() public override{
+    function updateState() public override onlyByIssuerOrParticipant{
         for (uint256 _loop_asset_id = 0; _loop_asset_id < commitsTokens.length; _loop_asset_id++) {
             for (uint256 p = 0; p < allParticipants.length; p++) {
 
@@ -272,23 +270,30 @@ contract PADLOnChainBN is PADLOnChainInterface{
             }
         }
         delete commitsTokens;
+        emit StateUpdated(identifier, block.timestamp);
+        isTxnInProgress = false;
     }
 
     function approveTxn() public override onlyByParticipants{
-        bool a = checkTxnApproval();
-        if (majorityvotes){
+        checkTxnApproval();
+        if (allvotes){
             ledger.push(identifier);
 
             updateState();
+            resetVotes();
             clearTxn();
+            emit TxnApprovedByParticipants(identifier, voteCount);
         }
+        isTxnInProgress = false;
     }
     function approveTxnIssuer() public override onlyByIssuer {
         ledger.push(identifier);
         clearTxn();
         updateState();
+        emit TxnApprovedByIssuer(identifier);
+        isTxnInProgress = false;
     }
-    function clearTxn() public override{
+    function clearTxn() public override onlyByIssuerOrParticipant(){
         // delete txn;
     }
     function retrieveTxn(uint i) public override view returns(string memory){
@@ -315,13 +320,16 @@ contract PADLOnChainBN is PADLOnChainInterface{
     /// @dev function to retrieve state of a participant
     /// @param p participant id
     /// @return state of a participant on the contract (commitment-token tuple)
-    function retrieveStateId(uint256 p) public override returns (PADLOnChainInterface.cmtk[] memory){
+    function retrieveStateId(uint256 p) public view override returns (PADLOnChainInterface.cmtk[] memory){
         return (state[allParticipants[p]]);
     }
 
     function processTx(PADLOnChainInterface.txcell[] memory ctx, uint256 asset_id) public override onlyByParticipants returns (bool) {
+        require(allParticipants.length > 0, "No participants in contract");
         require(ctx.length == allParticipants.length, "Length of transaction not equal to length of participants");
         // proof of balance
+        require(!isTxnInProgress, "Cant process new tx. Transaction already in progress");
+        isTxnInProgress = true;
         BN254Point memory sum_cm = ctx[0].cm;
         for (uint256 p = 1; p < allParticipants.length; p++) {
             sum_cm =  bn.add(ctx[p].cm, sum_cm);
@@ -351,7 +359,7 @@ contract PADLOnChainBN is PADLOnChainInterface{
         {
             ledger.push(identifier);
         }
-
+        isTxnInProgress = false;
         return true;
     }
 

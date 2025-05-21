@@ -1,4 +1,4 @@
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.28;
 /// @title Verification for proof of equivalence in transaction
 /// @author Applied research, Global Tech., JPMorgan Chase, London
 /// @notice This is an code for research and experimentation.
@@ -71,6 +71,7 @@ contract Bulletproof is RangeProofInterface {
         for (uint8 counter=1; counter< bits_length; counter++){
             arr[counter] = mulmod(arr[counter-1],step,order);
         }
+        return arr;
     }
     function iterate_with_sum(uint256 step) internal returns (uint256[bits_length] memory arr, uint256){
         arr[0] = 1;
@@ -118,7 +119,7 @@ contract Bulletproof is RangeProofInterface {
         b= pushPointToHash(b, proof.T1);
         b= pushPointToHash(b, proof.T2);
         b= pushPointToHash(b, proof.G);
-        b= pushPointToHash(b, proof.H); // adding public var according to frozenheart vol. 2022
+        b= pushPointToHash(b, proof.H);
         uint256 u_fs_challenge= closeHash(pushPointToHash(b, proof.Com));
         uint256[bits_length] memory yi;
         uint256 yi_sum;
@@ -237,6 +238,7 @@ contract Bulletproof is RangeProofInterface {
                 ux_c = bn254.add(ux_c, bn254.add(bn254.mul(proof.g_vec[counter],  mulmod(s[counter], proof.a_tag, order)), bn254.mul(hi[counter],mulmod(s_inv[counter],proof.b_tag,order)) ) );
             }
 
+            emit DebugValues(ux_c.x, P.x, ux_c.y, P.y);
             require(ux_c.x == P.x && ux_c.y == P.y,'IP fail in range proof');
 
             // uint256[bits_length] memory a_time_s;
