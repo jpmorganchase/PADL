@@ -18,13 +18,14 @@ main_dir = str(Path(path).parents[2])
 sys.path.append(parent_dir)
 from pyledger.extras.evmnet.evmpadl import EvmLedger
 from pyledger.ledger import BankCommunication, MakeLedger
-from pyledger.zkutils import curve_util
+from pyledger.zkutils import curve_util, BNCurve
 from pyledger.extras.injective_utils import InjectiveUtils
 import hashlib
 import json
 import configparser
 
 config_file_path = os.path.join(str(Path(os.path.realpath(__file__)).parents[0]), "ip_config.ini")
+print(config_file_path)
 ip_config = configparser.ConfigParser()
 ip_config.read(config_file_path)
 
@@ -517,5 +518,55 @@ class PadlEVM(EvmLedger):
         x = self.send_txn_from_fn_call(fn_call)
         print(f"Verification complete. Transaction sent.")
 
+class TokenPadlEVM(PadlEVM):
+    def __init__(self, secret_key=None, v0=0,
+                 contract_address=None,
+                 comm=BankCommunication(),
+                 contract_tx_name="",
+                 file_name_contract="",
+                 redeploy=False):
+        super().__init__(secret_key, v0,
+                         contract_address,
+                         comm,
+                         contract_tx_name,
+                         file_name_contract,
+                         redeploy)
 
+        self.token = None
+        self.contract_args = None
 
+    def deploy_token(self, bank):
+        self.contract_args = (bank.v0[0],  # initial value of private token
+                              BNCurve.get_xy(bank.pk),  # padl pk (not eth pk)
+                              BNCurve.get_xy(bank.initial_assets_cell[0].cm),  # initial value of private commit
+                              BNCurve.get_xy(bank.initial_assets_cell[0].token),
+                              # initial value of private token (not the actual token, but the crypto token)
+                              self.deployed_address, self.bnaddress, self.eqaddress,
+                              self.consaddress)  # all deployed aid & zk verifier addresses to be used in padl token.
+
+        self.token = EvmLedger(BankCommunication(), "PadlTokenBN.sol", self.local_dirname, self.w3, chain_id,
+                               bank.address, self.private_key, "PadlTokenBN")
+
+        contract_dict = {
+            "contract_location": None,
+            "contract_name": "PadlTokenBN",
+            "file_name": "PadlTokenBN.sol",
+            "args": self.contract_args
+        }
+
+        padlercadd = self.token.deploy(contract_dict=contract_dict)
+        self.deployed_token_address = padlercadd
+        return padlercadd
+
+    def retrieve_state(self, address):
+        conn = self.token.connect_to_evm()
+        contract = conn['contract_obj']
+        state = contract.functions.privateBalanceOf(address).call()
+        c = BNCurve.get_compressed_ecpoint(state[0], state[1])
+        t = BNCurve.get_compressed_ecpoint(state[2], state[3])
+        return c, t
+
+    def retrieve_private_state_from_tx(self, state):
+        c = BNCurve.get_compressed_ecpoint(state[0][0], state[0][1])
+        t = BNCurve.get_compressed_ecpoint(state[1][0], state[1][1])
+        return c, t

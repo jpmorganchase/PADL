@@ -12,7 +12,7 @@ contract PadlTokenBN is ERC20 {
     BNInterface public bn;
     PADLOnChainInterface padl;
     uint256 public sval = 10;
-
+    mapping(address => BN254Point) internal _padlpks;
     mapping(address => uint256) internal _balances;
     mapping(address => PADLOnChainInterface.cmtk) internal privateBalances;
     BN254Point internal h2r;
@@ -22,6 +22,7 @@ contract PadlTokenBN is ERC20 {
 
     struct initargs {
         uint256 initialSupply;
+        BN254Point pk;
         BN254Point cm;
         BN254Point tk;
         address _padlInterfaceAdd;
@@ -35,6 +36,7 @@ contract PadlTokenBN is ERC20 {
         padl = PADLOnChainInterface(init._padlInterfaceAdd);
         bn = BNInterface(init._bnaddress);
         _mint(msg.sender, init.initialSupply);
+        _padlpks[msg.sender] = init.pk;
         eqaddress = init._eqaddress;
         consaddress = init._consaddress;
         privateBalances[msg.sender].cm.x = init.cm.x;
@@ -80,6 +82,17 @@ contract PadlTokenBN is ERC20 {
 
     function _privateUpdate(address from, address to, PADLOnChainInterface.txcell memory senderCell, PADLOnChainInterface.txcell memory receiverCell) internal returns (bool){
         BN254Point memory tempcm ;
+        if (_padlpks[to].x >0)
+        {
+            require(_padlpks[to].x == receiverCell.pc.pubkey.x, 'Public key is not align with address, transaction fail');
+        }
+        else
+        {
+            _padlpks[to] = receiverCell.pc.pubkey;
+            require(_padlpks[to].x==receiverCell.pc.pubkey.x,'Public key is not align with address, transaction fail');
+        }
+        require(_padlpks[from].x == senderCell.pc.pubkey.x, 'Sender Public key must be with balance, transaction fail');
+
         tempcm = bn.add(receiverCell.cm, senderCell.cm);
         h2r = geth2r(senderCell.cm, senderCell.compcm, from);
         require((tempcm.x == 0 && tempcm.y == 0), 'Proof of balance failed');

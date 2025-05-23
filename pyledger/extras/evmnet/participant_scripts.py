@@ -1,9 +1,10 @@
 """Interface to call PADL functions on EVM.
 GTAR - London - JPMorgan Chase """
 import zkbp
-from pyledger.extras.evmnet.contractpadl import PadlEVM
+from pyledger.extras.evmnet.contractpadl import PadlEVM, TokenPadlEVM
 from pyledger.zkutils import r_blend, Commit, Secp256k1, curve_util, BNCurve
 from pyledger.extras import utils
+from pyledger.ledger import MakeLedger
 import os
 import logging
 from pathlib import Path
@@ -12,11 +13,13 @@ path = os.path.realpath(__file__)
 parent_dir = str(Path(path).parents[3])
 from pyledger.create_tx import InjectiveTxSmartContract, ERCTx
 
+# default
 CONTRACT_FILE="PADLOnChainBN"
 BITS = 64
 MAX = int(2 ** (BITS / 4))
 
 def create_account(contract_address):
+    """this is a local temporal account"""
     add, key, pubkey = PadlEVM.create_account(contract_address)
     print(f"new account created with address {add}")
     account_dict ={"address":add,"private_key": key, "public_key": pubkey,"contract_address": contract_address}
@@ -30,6 +33,7 @@ def register_padl(name: str, account_dict: object, v0=[0,0],
                   contract_tx_name=CONTRACT_FILE,
                   ) -> object:
     file_name_contract=CONTRACT_FILE+".sol"
+    """registering padl and contract is deployed on the environment"""
     bank_gkp =PadlEVM(secret_key=account_dict['private_key'],
                                contract_address=account_dict['contract_address'],
                                contract_tx_name=contract_tx_name,
@@ -51,6 +55,7 @@ def register_padl(name: str, account_dict: object, v0=[0,0],
     return bank
 
 def register_padl_onchain(name, account_dict, v0=[1000], types={'0':'x'},retreive_v0: object = False, audit_pk=None, audit_account={} ):
+    """general deploying and registering padl contract"""
     print(f'Registering new participant')
     ledger = PadlEVM(secret_key=account_dict['private_key'], contract_address=account_dict['contract_address'])
     if retreive_v0:
@@ -68,14 +73,16 @@ def register_padl_onchain(name, account_dict, v0=[1000], types={'0':'x'},retreiv
     return bank
 
 def bank_send_deposit(account_dict, amount=10):
-    w3 = Web3(Web3.HTTPProvider("http://127.0.0.1:8545"))
+    '''dsimple depositing into evm account'''
+    ledger = PadlEVM(secret_key=account_dict['private_key'], contract_address=account_dict['contract_address']
+    ,contract_tx_name=CONTRACT_FILE,file_name_contract=CONTRACT_FILE+".sol")
+    w3 = Web3(Web3.HTTPProvider(ledger.url))
     bal = w3.fromWei(w3.eth.get_balance(account_dict['address']),'ether')
     add  = account_dict['address']
     print(f'Eth balance for address {add} is {bal}')
     print('Sending deposit')
-
     transaction = {
-        'chainId': 1337,
+        'chainId': ledger.chain,
         "from": account_dict['address'],
         "to": account_dict['contract_address'],
         "value": w3.toWei(amount,'ether'),
@@ -95,7 +102,7 @@ def bank_send_deposit(account_dict, amount=10):
     cbal = w3.fromWei(w3.eth.get_balance(account_dict['contract_address']), 'ether')
     print(f'Contract Eth balance at address {cadd} is {cbal}')
 
-def request_token_commit(file_name, address, pk, deposit_v0, v0, contract_tx_name=CONTRACT_FILE, file_name_contract=CONTRACT_FILE+".sol"):
+def request_token_commit(file_name, address, pk, deposit_v0, v0):
     ledger, bank = get_ledger_bank_padl(file_name)
     initial_cell = ledger.create_initial_cell_from_asset_vals(v0, pk)
     ledger.upload_commit_token_request(address, initial_cell, deposit_v0)
@@ -144,6 +151,7 @@ def deploy_bond_contract(issuer_name: str, issuer_private_key: str, initial_v:
     logging.info(f"new contract deployed for participant: {bank.name}")
     return bank
 
+
 def deploy_PADLOnChain(secret_key, name='Issuer', v0=[1000], types={'0':'x'},contract_tx_name=CONTRACT_FILE, file_name_contract=CONTRACT_FILE+".sol", redeploy=True):
     print("deploy")
     ledger = PadlEVM(secret_key=secret_key, v0=v0[0], contract_tx_name=contract_tx_name, file_name_contract=file_name_contract, redeploy=redeploy)
@@ -157,6 +165,18 @@ def deploy_PADLOnChain(secret_key, name='Issuer', v0=[1000], types={'0':'x'},con
                                     contract_tx_name = contract_tx_name,
                                     file_name_contract = file_name_contract)
     return ledger,bank
+
+def deploy_PadlToken(secret_key, name='Issuer', v0=[0], contract_tx_name=CONTRACT_FILE, file_name_contract=CONTRACT_FILE+".sol", redeploy=True):
+    print("deploying padl token on chain...")
+    ledger = TokenPadlEVM(secret_key=secret_key,v0=0, contract_tx_name=CONTRACT_FILE,file_name_contract=CONTRACT_FILE+".sol",redeploy=True)
+    bank = MakeLedger().register_new_bank(name=name, v0=v0, address=ledger.account_address, contract_address=ledger.deployed_address, tx_obj=ERCTx())
+    print("added the issuer to ledger...")
+    ledger.add_participant_to_contract(ledger.account_address)
+    print("deploying token...")
+    ledger.deploy_token(bank)
+    print("done")
+    return ledger, bank
+
 
 def add_participant(add, name="Issuer 0"):
     logging.info("adding participant")
@@ -249,11 +269,11 @@ def check_balance_tx(file_name, tx):
     return bals
 
 
-def check_balance_by_commit_token(file_name, c, t):
+def check_balance_by_commit_token(file_name, ct):
     bank = utils.load_bank_from_file(file_name)
     gh = zkbp.gen_GH()
-    cc = zkbp.from_str(BNCurve.get_compressed_ecpoint(c[0], c[1]))
-    tc = zkbp.to_token_from_str(BNCurve.get_compressed_ecpoint(t[0], t[1]))
+    cc = zkbp.from_str(ct[0])
+    tc = zkbp.to_token_from_str(ct[1])
     bal = zkbp.get_brut_v(cc,tc, gh, bank.sk_pk_obj, MAX)
     print(f"balance is {bal}")
     return bal

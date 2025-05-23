@@ -200,10 +200,22 @@ class EvmLedger(MakeLedger):
         self.rngaddress = rngaddress
         return padladd, bnaddress, eqaddress, consaddress, rngaddress
 
-    def deploy_padl_erc(self,contract_args):
-        contract_dict = {"contract_location": None,
-                              "contract_name": "PadlTokenBN",
-                              "file_name": "PadlTokenBN.sol",
-                              "args": contract_args}
+    def deploy_padl_erc(self, contract_args):
+        contract_dict = {
+            "contract_location": None,
+            "contract_name": "PadlTokenBN",
+            "file_name": "PadlTokenBN.sol",
+            "args": contract_args
+        }
         padlercadd = self.deploy(contract_dict=contract_dict)
         return padlercadd
+
+    def deploy_trade_contract(self, contract_args, contract_name="PrivateTrade", recompile=True):
+        contract_dict = {
+            "contract_location": None,
+            "contract_name": contract_name,
+            "file_name": contract_name + ".sol",
+            "args": contract_args
+        }
+        address = self.deploy(contract_dict, recompile)
+        return address

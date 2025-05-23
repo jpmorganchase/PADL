@@ -120,7 +120,7 @@ contract Bulletproof is RangeProofInterface {
         b= pushPointToHash(b, proof.T2);
         b= pushPointToHash(b, proof.G);
         b= pushPointToHash(b, proof.H);
-        uint256 u_fs_challenge= closeHash(pushPointToHash(b, proof.Com));
+        uint256 u_fs_challenge= closeHash(pulsshPointToHash(b, proof.Com)); //closeHash(b);
         uint256[bits_length] memory yi;
         uint256 yi_sum;
         (yi, yi_sum) = iterate_with_sum(y);

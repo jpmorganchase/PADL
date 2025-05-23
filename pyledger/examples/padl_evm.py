@@ -9,6 +9,9 @@ in order to run this example. Two services need to be up.
 2. run an evm node. For simplicity, you can use ganache-cli with the following launch command line: 
 ganache-cli --miner.blockGasLimit 10000000000000000 --miner.callGasLimit 1000000000000000
 --account="0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63,10000000000000000000000000"
+or:
+ganache-cli --account="0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63,10000000000000000000000000"
+
 """
 from eth_account import Account
 import time
@@ -49,6 +52,7 @@ def main():
     register_padl(name="Bank", v0=[10,10], types={'0': 'x', '1': 'y'}, account_dict=account_dict, audit_pk=public_key)
     bank_send_deposit(account_dict,10)
     check_balance("Bank 2")
+
     for txx in range(3):
             # issuer
             tx = send_coins(vals=[ [-2, 0, 2],[-2, 0, 2] ], file_name="Issuer 0", audit_pk=public_key) # this is the broadcast  (tx + approve tx by issuer)
@@ -65,7 +69,7 @@ def main():
             vote_tx("Bank 2")
 
             # later on smart contract to append to ledger
-            finalize_tx("Issuer 0")
+            finalize_tx("Issuer 0", Issuer=True)
 
             check_balance("Bank 1")
             check_balance("Bank 2")
@@ -87,7 +91,7 @@ def main():
             vote_tx("Bank 2")
 
             # later on smart contract to append to ledger
-            finalize_tx("Issuer 0")
+            finalize_tx("Issuer 0", Issuer=True)
 
             check_balance_by_state("Bank 1")
             check_balance("Bank 1")

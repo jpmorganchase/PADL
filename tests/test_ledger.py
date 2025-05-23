@@ -4,18 +4,13 @@ from pathlib import Path
 
 import warnings
 path = os.path.realpath(__file__)
-parent_dir = str(Path(path).parents[1]) # go up 2 levels to '/zkledgerplayground/'
+parent_dir = str(Path(path).parents[1])
 sys.path.append(parent_dir)
-from pyledger.ledger import Bank, MakeLedger, BankCommunication, Auditing
+from pyledger.ledger import Bank, MakeLedger, BankCommunication
 import logging
 
- 
-from eth_account import Account
 from pyledger.create_tx import *
-from pyledger.extras.evmnet.participant_scripts import *
-from pyledger.Proof_Generation import ProofGenerator
-from pyledger.Proof_verification import Auditing
-from pyledger.extras.evmnet.participant_scripts import *
+
 
 class TestLocal(TestCase):
     def test_add_asset(self):
