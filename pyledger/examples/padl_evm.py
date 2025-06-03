@@ -61,12 +61,12 @@ def main():
             tx1 = add_proof("Bank 1")
             tx2 = add_proof("Bank 2")
 
-            # # issuer audit and vote.
-            vote_tx("Issuer 0")
-
-            # participant. audit and vote.
-            vote_tx("Bank 1")
-            vote_tx("Bank 2")
+            # # # issuer audit and vote.
+            # vote_tx("Issuer 0")0
+            #
+            # # participant. audit and vote.
+            # vote_tx("Bank 1")
+            # vote_tx("Bank 2")
 
             # later on smart contract to append to ledger
             finalize_tx("Issuer 0", Issuer=True)
@@ -84,11 +84,11 @@ def main():
             tx2 = add_proof("Bank 2")
 
             # # issuer audit and vote.
-            vote_tx("Issuer 0")
-
-            # participant. audit and vote.
-            vote_tx("Bank 1")
-            vote_tx("Bank 2")
+            # vote_tx("Issuer 0")
+            #
+            # # participant. audit and vote.
+            # vote_tx("Bank 1")
+            # vote_tx("Bank 2")
 
             # later on smart contract to append to ledger
             finalize_tx("Issuer 0", Issuer=True)

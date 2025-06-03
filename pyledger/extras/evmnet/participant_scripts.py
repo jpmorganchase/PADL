@@ -32,6 +32,7 @@ def register_padl(name: str, account_dict: object, v0=[0,0],
                   audit_account={},
                   contract_tx_name=CONTRACT_FILE,
                   ) -> object:
+    print(name,account_dict['private_key'],account_dict['contract_address'])
     file_name_contract=CONTRACT_FILE+".sol"
     """registering padl and contract is deployed on the environment"""
     bank_gkp =PadlEVM(secret_key=account_dict['private_key'],
@@ -182,6 +183,7 @@ def add_participant(add, name="Issuer 0"):
     logging.info("adding participant")
     issuer, issuer_bank = get_ledger_bank_padl(name)
     issuer.add_participant_to_contract(add)
+    print(issuer.get_all_pks())
     issuer.send_inital_gas(add=add)
 
 def add_participant_to_contract(add, pk, v0, name="Issuer 0", contract_tx_name="StorePermissionsAndTxns", file_name_contract="StorePermissionsAndTxns.sol"):
