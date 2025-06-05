@@ -102,7 +102,7 @@ class PadlEVM(EvmLedger):
             'nonce': nonce,
             'from': self.account_address,
             'to': add,
-            'value': self.w3.toWei(100, 'ether'),
+            'value': self.w3.toWei(0, 'ether'),
             'gas': 100000,
             'gasPrice': self.w3.eth.gasPrice
 

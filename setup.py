@@ -92,7 +92,7 @@ class InstallCommand(Command):
             else:
                 sed_command = ['sed', '-i', 's/&8/8/g', file_path]  # Linux/other version
             result = subprocess.run(sed_command, check=True, capture_output=True, text=True)
-            subprocess.run(["maturin", "development", "-r", "-m", "./zkbp_module/Cargo.toml"], check=True)
+            subprocess.run(["maturin", "build", "-r", "-m", "./zkbp_module/Cargo.toml"], check=True)
             run_test()
         except subprocess.CalledProcessError as e:
             print(f"An error occurred: {e}")

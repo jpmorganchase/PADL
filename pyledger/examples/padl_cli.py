@@ -42,7 +42,7 @@ def deploy_contract(private_key, v0=[1000, 1000], types={'0': 'x', '1': 'y'}):
 def add_party(account_address):
     add_participant(account_address, "Issuer 0")
 
-def register(name, contract_address, private_key, address, v0=[1000, 1000], types={'0': 'x', '1': 'y'}):
+def register(name, contract_address, private_key, address, v0=[0, 0], types={'0': 'x', '1': 'y'}):
     register_padl(
         name=name,
         v0=v0,
