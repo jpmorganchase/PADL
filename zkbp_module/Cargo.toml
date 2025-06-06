@@ -1,6 +1,6 @@
 [package]
 name = "zkbp"
-version = "0.1.2"
+version = "0.1.4"
 edition = "2021"
 description = "ZK interface for python ledger"
 readme = "README.md"  # 👈 THIS is required
@@ -10,7 +10,7 @@ keywords = ["zk", "crypto", "bn254"]
 
 [tool.maturin]
 module-name = "zkbp"
-include = ["zkbp/LICENSE"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 name = "zkbp"
@@ -33,5 +33,3 @@ json_value_merge = "2.0.0"
 rand = "0.7"
 rand_legacy = { package = "rand", version = "0.6" }
 rand_core = "0.4.0"
-
-

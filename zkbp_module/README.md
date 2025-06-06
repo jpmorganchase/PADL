@@ -42,7 +42,7 @@ You can install or use the wrapped `zkbp` library in your Python projects. Examp
 
 ## 📄 License
 
-This software is licensed under the **Apache 2.0 License**. See the [LICENSE](zkbp/LICENSE) file for details.
+This software is licensed under the **Apache 2.0 License**. See the [LICENSE](LICENSE) file for details.
 
 > ⚠️ **Note:** This is **research code only** and not intended for production use.
 

@@ -1,7 +1,10 @@
-# pyproject.toml
 [project]
 name = "zkbp"
-version = "0.1.2"
+version = "0.1.4"
+description = "ZKBP Python bindings"  # <-- (add your description)
+authors = [{ name = "JP Morgan Chase" }]
+license = { text = "Apache-2.0" }  # <-- Apache Software License
+readme = "README.md"
 repository = "https://github.com/jpmorganchase/padl"
 requires-python = ">=3.9"
 classifiers = [
@@ -22,10 +25,8 @@ classifiers = [
 ]
 
 [build-system]
-requires = ["maturin>=1.0,<2.0"]
+requires = ["maturin>=1.3,<2.0"]  # <-- I recommend bumping to >=1.3
 build-backend = "maturin"
 
 [tool.maturin]
-# Optional: specify what to include in sdist and wheel
-include = ["Cargo.toml", "README.md", "LICENSE"]
-
+include = ["Cargo.toml", "README.md"]

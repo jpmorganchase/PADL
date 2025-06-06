@@ -92,7 +92,9 @@ class InstallCommand(Command):
             else:
                 sed_command = ['sed', '-i', 's/&8/8/g', file_path]  # Linux/other version
             result = subprocess.run(sed_command, check=True, capture_output=True, text=True)
+            subprocess.run(["maturin", "develop", "-r", "-m", "./zkbp_module/Cargo.toml"], check=True)
             subprocess.run(["maturin", "build", "-r", "-m", "./zkbp_module/Cargo.toml"], check=True)
+
             run_test()
         except subprocess.CalledProcessError as e:
             print(f"An error occurred: {e}")
@@ -153,7 +155,7 @@ def run_test():
     test_suite = test_loader.discover('tests')
     test_runner = unittest.TextTestRunner(verbosity=2)
     test_runner.run(test_suite)
-    clean()
+    # clean()
 
 def clean():
     # Define patterns for files to remove
