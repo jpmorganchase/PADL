@@ -147,9 +147,13 @@ class Bank:
         self.auditor_proofs_ratio = []
         self.port = port
         if address is not None:
-            self.address = address + ":" + str(self.port)
+            if 'http' in address:
+                self.address = address + ":" + str(self.port)
+            else:
+                self.address = address
         else:
             self.address = self # only for local test purposes
+
         self.contract_address = contract_address
         self.contract_tx_name = contract_tx_name
         self.file_name_contract = file_name_contract
@@ -392,6 +396,7 @@ class Bank:
         c.token_ = self.sk_pk_obj.to_token(r_.get()).get
         c.P_C_ = ProofGenerator().generate_proof_of_consistency(tx[self.id].cm_, tx[self.id].token_, v_r, self.pk)
         c.P_Eq = ProofGenerator().generate_value_eq_cm_proof(sum_tokens, sum_cms, c.token_, c.cm_, asset, self.sk_pk_obj)
+
         c.P_A = ProofGenerator().generate_proof_of_asset(v_sum, r_)
         c.P_B = ProofGenerator().generate_proof_of_balance(tx)
 

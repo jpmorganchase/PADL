@@ -273,27 +273,27 @@ class ERCTx(InjectiveTx):
     def __init__(self):
         super().__init__()
 
-    def create_asset_tx(self, v, ledger, state, old_balance):
+    def create_asset_tx(self, vals, pub_keys, state, audit_pk=None, smart_contract=True):
         from pyledger.ledger import MakeLedger
         id = 1
         gh = zkbp.gen_GH()
         #rpr,token,cm,r = ProofGenerator().generate_range_proof_positive_commitment(v[0][1], id, ledger)
         r = r_blend()
-        cm = zkbp.commit(v[0][1], r.val, gh)
-        token = zkbp.to_token_from_pk(ledger.pub_keys[id], r.val)
-        rpr = ProofGenerator().generate_proof_of_asset(v[0][1], r, smart_contract=True)
+        cm = zkbp.commit(vals[0][1], r.val, gh)
+        token = zkbp.to_token_from_pk(pub_keys[id], r.val)
+        rpr = ProofGenerator().generate_proof_of_asset(vals[0][1], r, smart_contract=smart_contract)
         cell = MakeLedger.Cell(cm,token)
         cell.P_A = rpr
         cell.cm = cm.get
         cell.token = token.get
-        cell.P_C = ProofGenerator().generate_proof_of_consistency(cm.get,token.get,[v[0][1],r],ledger.pub_keys[1])
-        cell.P_C = InjectiveUtils.format_consistency_proof(cell.P_C, cell.cm, cell.token, ledger.pub_keys[1])
+        cell.P_C = ProofGenerator().generate_proof_of_consistency(cm.get,token.get,[vals[0][1],r],pub_keys[1])
+        cell.P_C = InjectiveUtils.format_consistency_proof(cell.P_C, cell.cm, cell.token, pub_keys[1])
         c,t = state # id = 0
         old_balance = self.bank.get_balance_from_contract(c, t)
-        new_balance = old_balance + v[0][0] # asset = 0 id = 0
+        new_balance = old_balance + vals[0][0] # asset = 0 id = 0
         r_own = -r
-        cm_own = zkbp.commit(v[0][0], r_own.get(), gh)
-        token_own = zkbp.to_token_from_pk(ledger.pub_keys[0], r_own.get())
+        cm_own = zkbp.commit(vals[0][0], r_own.get(), gh)
+        token_own = zkbp.to_token_from_pk(pub_keys[0], r_own.get())
         comp_sc = [zkbp.from_str(c), cm_own]
         comp_st = [zkbp.to_token_from_str(t), token_own]
         sum_commit = reduce(lambda x, y: zkbp.add(x, y), comp_sc)
@@ -304,22 +304,22 @@ class ERCTx(InjectiveTx):
         owncell.token = token_own.get
         owncell.P_C = ProofGenerator().generate_proof_of_consistency(owncell.cm,
                                                                 owncell.token,
-                                                                [v[0][0], r_own],
-                                                                ledger.pub_keys[0])
-        owncell.P_C = InjectiveUtils.format_consistency_proof(owncell.P_C, owncell.cm, owncell.token, ledger.pub_keys[0])
+                                                                [vals[0][0], r_own],
+                                                                pub_keys[0])
+        owncell.P_C = InjectiveUtils.format_consistency_proof(owncell.P_C, owncell.cm, owncell.token, pub_keys[0])
 
         r_comp = r_blend()
 
-        rpr = ProofGenerator().generate_proof_of_asset(new_balance, r_comp, smart_contract=True)
+        rpr = ProofGenerator().generate_proof_of_asset(new_balance, r_comp, smart_contract=smart_contract)
         cm_ = zkbp.commit(new_balance, r_comp.get(), gh)
-        token_ = zkbp.to_token_from_pk(ledger.pub_keys[0], r_comp.get())
+        token_ = zkbp.to_token_from_pk(pub_keys[0], r_comp.get())
         owncell.cm_ = cm_.get
         owncell.token_ = token_.get
         consistency_pr_ = ProofGenerator().generate_proof_of_consistency(owncell.cm_,
                                                                      owncell.token_,
                                                                      [new_balance, r_comp],
-                                                                     ledger.pub_keys[0])
-        owncell.P_C_ = InjectiveUtils.format_consistency_proof(consistency_pr_, owncell.cm_, owncell.token_, ledger.pub_keys[0])
+                                                                     pub_keys[0])
+        owncell.P_C_ = InjectiveUtils.format_consistency_proof(consistency_pr_, owncell.cm_, owncell.token_, pub_keys[0])
         sum_com_minus_pcm = Commit.from_str(sum_commit.get) - Commit.from_str(cm_.get)
         sum_token_minus_ptoken = zkbp.sub_token(zkbp.to_token_from_str(sum_token.get),
                                                 zkbp.to_token_from_str(token_.get))

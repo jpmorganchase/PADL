@@ -39,7 +39,11 @@ def replace_in_file(file_path):
             file_content = file.read()
 
         # Perform the replacements
-        updated_content = file_content.replace('Secp256k1', 'Bn254').replace('secp256_k1', 'bn254')
+        # Perform the replacements including adding commit to challange due to frozenheart 2022 in bulletproofs
+        updated_content = (((file_content.replace('Secp256k1', 'Bn254').replace('secp256_k1', 'bn254').
+        replace(".chain_points([&T1, &T2, G, H])",".chain_points([&T1, &T2, G, H]).chain_points(&ped_com_vec)")).
+        replace(".chain_points([&self.T1, &self.T2, G, H])",".chain_points([&self.T1, &self.T2, G, H]).chain_points(ped_com)")).
+        replace("let num_of_proofs = secret.len();","let num_of_proofs = secret.len(); let ped_com_vec = (0..num_of_proofs).map(|i| &*G * &secret[i] + H * &blinding[i]).collect::<Vec<Point<Bn254>>>();"))
 
         # Write the updated content back to the file
         with open(file_path, 'w') as file:
@@ -60,7 +64,7 @@ class InstallCommand(Command):
     def finalize_options(self):
         pass
     def run(self):
-        subprocess.check_call([sys.executable, "-m", "pip", "install", 'toml', 'maturin', 'Flask', 'numpy'])
+        subprocess.check_call([sys.executable, "-m", "pip", "install", 'toml', 'maturin','web3==5.18.0', 'py-solc-x', 'Flask', 'numpy', 'eth-account', 'requests'])
         try:
             # clone kzen curv and bulletproofs and extend them to bn254, and additional proofs.
             if not os.path.exists("zkbp_module/curv"):
@@ -77,8 +81,6 @@ class InstallCommand(Command):
 
             replace_in_file("zkbp_module/bulletproofs/src/proofs/inner_product.rs")
             replace_in_file("zkbp_module/bulletproofs/src/proofs/range_proof.rs")
-            replace_in_file("zkbp_module/bulletproofs/src/proofs/range_proof_wip.rs")
-            replace_in_file("zkbp_module/bulletproofs/src/proofs/weighted_inner_product.rs")
 
             # Run the sed command to replace '&8' with '8' in the specified file
             file_path="./zkbp_module/curv/src/arithmetic/big_native/primes.rs"
@@ -91,6 +93,8 @@ class InstallCommand(Command):
                 sed_command = ['sed', '-i', 's/&8/8/g', file_path]  # Linux/other version
             result = subprocess.run(sed_command, check=True, capture_output=True, text=True)
             subprocess.run(["maturin", "develop", "-r", "-m", "./zkbp_module/Cargo.toml"], check=True)
+            subprocess.run(["maturin", "build", "-r", "-m", "./zkbp_module/Cargo.toml"], check=True)
+
             run_test()
         except subprocess.CalledProcessError as e:
             print(f"An error occurred: {e}")
@@ -151,7 +155,7 @@ def run_test():
     test_suite = test_loader.discover('tests')
     test_runner = unittest.TextTestRunner(verbosity=2)
     test_runner.run(test_suite)
-    clean()
+    # clean()
 
 def clean():
     # Define patterns for files to remove
@@ -189,7 +193,7 @@ class CleanCommand(Command):
 
 setup(
     name='pyledger',
-    version='0.1',
+    version='0.1.1',
     packages=find_packages(),
     install_requires=[
         'toml',
@@ -198,6 +202,8 @@ setup(
         'numpy',
         'web3==5.18.0',
         'py-solc-x',
+        'eth-account',
+        'requests'
     ],
     cmdclass={
         'init': InstallCommand,

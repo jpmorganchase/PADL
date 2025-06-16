@@ -3,6 +3,7 @@ import os
 import sys
 from pathlib import Path
 import time
+
 path = os.path.realpath(__file__)
 parent_dir = str(Path(path).parents[2])
 sys.path.append(parent_dir)

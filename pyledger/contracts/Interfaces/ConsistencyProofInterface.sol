@@ -23,7 +23,7 @@ struct consistencyProofSolR{
 abstract contract ConsistencyProofInterface {
 
     function getConsistencyHash(consistencyProofSolR memory prsol) public virtual returns(uint256);
-    function pushPointToHash(bytes memory b, uint256 x, uint256 y) public virtual returns(bytes memory);
-    function closeHash(bytes memory b) public virtual returns (uint256);
+    function pushPointToHash(bytes memory b, uint256 x, uint256 y) public view virtual returns(bytes memory);
+    function closeHash(bytes memory b) public view virtual returns (uint256);
     function verify(consistencyProofSolR memory prsol) public virtual returns(bool);
 }

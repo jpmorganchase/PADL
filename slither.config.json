@@ -1,0 +1,27 @@
+{
+  "detectors_to_exclude": [
+    "naming-convention",
+    "calls-inside-a-loop",
+    "reentrancy-vulnerabilities",
+    "costly-operations-inside-a-loop",
+    "immutable-states",
+    "cache-array-length",
+    "unused-return",
+    "external-function",
+    "uninitialized-state",
+    "uninitialized-storage",
+    "uninitialized-local",
+    "low-level-calls",
+    "too-many-digits",
+    "incorrect-modifier",
+    "incorrect-equality",
+    "missing-zero-check",
+    "shadowing-local",
+    "shadowing-state"
+  ],
+  "exclude_informational": true,
+  "exclude_optimization": true,
+  "exclude_low": true,
+  "exclude_medium": true,
+  "exclude_high": false
+}

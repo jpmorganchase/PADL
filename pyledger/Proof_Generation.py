@@ -42,10 +42,7 @@ class ProofGenerator:
     This object is for generating proofs.
 """
     def generate_proof_of_asset(self, v, r, n_bit=BITS, smart_contract=False):
-#       from pyledger.Proof_verification import Auditing
-        start = time.time()
         range_proof = zkbp.range_proof_single(n_bit=n_bit, val=v, gh=zkbp.gen_GH(), r=r.val)
-
         if smart_contract:
             sol_proof= self.sol_format_proof_of_asset(json.loads(range_proof),v,r,n_bit)
             # rejecting smaller than 32 scalars for appropriate hashing on contract.
