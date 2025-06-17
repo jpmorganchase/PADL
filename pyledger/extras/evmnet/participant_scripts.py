@@ -184,13 +184,13 @@ def add_participant(add, name="Issuer 0"):
     issuer, issuer_bank = get_ledger_bank_padl(name)
     issuer.add_participant_to_contract(add)
     print(issuer.get_all_pks())
-    issuer.send_inital_gas(add=add)
+    # issuer.send_inital_gas(add=add,value=0.1)
 
 def add_participant_to_contract(add, pk, v0, name="Issuer 0", contract_tx_name="StorePermissionsAndTxns", file_name_contract="StorePermissionsAndTxns.sol"):
     logging.info("adding participant")
     issuer, issuer_bank = get_ledger_bank_padl(name, contract_tx_name, file_name_contract)
     issuer.add_participant_to_contract_pk(add, pk, v0)
-    issuer.send_inital_gas(add=add)
+    # issuer.send_inital_gas(add=add,value=0.1)
 
 def check_supply(file_name):
     bank = utils.load_bank_from_file(file_name)

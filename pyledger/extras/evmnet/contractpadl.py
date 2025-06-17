@@ -92,7 +92,7 @@ class PadlEVM(EvmLedger):
         self.add_pk_to_contract(_pk,_address)
         self.add_zero_line(json_initial_cell,_address)
 
-    def send_inital_gas(self, add, verbose=False):
+    def send_inital_gas(self, add, verbose=False,value=0):
         add = self.w3.toChecksumAddress(add)
         print('address', add)
         nonce = self.w3.eth.get_transaction_count(self.account_address)
@@ -102,7 +102,7 @@ class PadlEVM(EvmLedger):
             'nonce': nonce,
             'from': self.account_address,
             'to': add,
-            'value': self.w3.toWei(0, 'ether'),
+            'value': self.w3.toWei(value, 'ether'),
             'gas': 100000,
             'gasPrice': self.w3.eth.gasPrice
 

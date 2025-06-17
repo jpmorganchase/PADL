@@ -10,7 +10,7 @@ in order to run this example. Two services need to be up.
 ganache-cli --miner.blockGasLimit 10000000000000000 --miner.callGasLimit 1000000000000000
 --account="0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63,10000000000000000000000000"
 or:
-ganache-cli --account="0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63,10000000000000000000000000"
+ganache-cli --account="0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63,100000000000000000000000000"
 
 """
 from eth_account import Account
@@ -40,17 +40,20 @@ def main():
     add_participant(account_dict['address'])
 
     ledger, issuer = get_ledger_bank_padl("Issuer 0")
+    ledger.send_inital_gas(add=account_dict['address'], value=0.2)
+
     public_key = issuer.pk
     # register new bank in padl ledger (issuer is done by default using deploy_new_contract().
     register_padl(name="Bank", v0=[10,10], types={'0': 'x', '1': 'y'}, account_dict=account_dict, audit_pk=public_key)
-    bank_send_deposit(account_dict,10)
+    #bank_send_deposit(account_dict,10)
     check_balance("Bank 1")
     # adding another participant to the list to give access to contract.
     account_dict = create_account(contract_address)
     add_participant(account_dict['address'])
+    ledger.send_inital_gas(add=account_dict['address'], value=0.2)
     # register new bank in padl ledger (issuer is done by default using deploy_new_contract().
     register_padl(name="Bank", v0=[10,10], types={'0': 'x', '1': 'y'}, account_dict=account_dict, audit_pk=public_key)
-    bank_send_deposit(account_dict,10)
+    #bank_send_deposit(account_dict,10)
     check_balance("Bank 2")
 
     for txx in range(3):

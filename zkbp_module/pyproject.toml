@@ -1,6 +1,6 @@
 [project]
 name = "zkbp"
-version = "0.1.4"
+version = "0.1.5"
 description = "ZKBP Python bindings"  # <-- (add your description)
 authors = [{ name = "JP Morgan Chase" }]
 license = { text = "Apache-2.0" }  # <-- Apache Software License

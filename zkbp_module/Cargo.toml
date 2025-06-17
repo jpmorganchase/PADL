@@ -1,6 +1,6 @@
 [package]
 name = "zkbp"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 description = "ZK interface for python ledger"
 readme = "README.md"  # 👈 THIS is required
