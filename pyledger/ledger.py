@@ -452,6 +452,8 @@ class MakeLedger:
         self.state = []
 
     def register_bank(self, pk, bank_func_pointer):
+        assert pk is not None, "public key must not be None"
+        assert isinstance(pk, str) and len(pk) > 0, "public key must be a non-empty string"
         self.pub_keys.append(pk)
         self.bank_addresses.append(bank_func_pointer)
         self.zero_line.append(MakeLedger.Cell())
