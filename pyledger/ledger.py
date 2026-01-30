@@ -53,10 +53,10 @@ class Bank:
                  secret_key=None,
                  initial_asset_cell=None,
                  audit_pk=None,
-                 audit_account={},
+                 audit_account=None,
                  contract_tx_name='',
                  file_name_contract='',
-                 tx_obj=CreateTx()
+                 tx_obj=None
                  ):
         """
     initalise object for participant
@@ -125,6 +125,8 @@ class Bank:
                 self.initial_assets_cell[a].meta_data = {"audit": audit_tokens[a]}
 
         self.cm_account_info = {}
+        if audit_account is None:
+            audit_account = {}
         for key in audit_account:
             if key == 'audit': key = 'audit_1'
             v = audit_account[key]['value']
@@ -173,7 +175,8 @@ class Bank:
             AssertionError("ledger and input id should be the same")
         #
         ledger.register_zero_line(self.initial_assets_cell)
-
+        if tx_obj is None:
+            tx_obj = CreateTx()
         self.tx_obj = tx_obj
         self.tx_type = self.tx_obj.__class__.__name__
 
