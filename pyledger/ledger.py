@@ -169,8 +169,7 @@ class Bank:
         # saving ledger address and getting the id from ledger
         self.ledger_address = ledger.address
         id = ledger.register_bank(self.pk, self.address)
-        if self.id != id:
-            AssertionError("ledger and input id should be the same")
+        assert self.id == id, "ledger and input id should be the same"
         #
         ledger.register_zero_line(self.initial_assets_cell)
 
@@ -644,7 +643,7 @@ class MakeLedger:
             return [MakeLedger.txs_from_json(tx_json) for tx_json in txs]
         elif isinstance(txs, str) or isinstance(txs, bytes):
             return [MakeLedger.txs_from_json(tx_json) for tx_json in json.loads(txs)]
-        AssertionError("doesn't recognise type")
+        raise AssertionError("doesn't recognise type")
 
     def arrange_commits_tokens_columns(self, asset, bank):
         commits = [zkbp.from_str(self.zero_line[bank][asset].cm)]
