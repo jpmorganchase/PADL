@@ -669,12 +669,14 @@ impl GH {
 }
 
 // This function generates a new GH object with random points G and H and returns a new GH instance wrapped in a Python object.
+// In demo: This function returns a deterministic commitment key (G,H) for Pedersen commitments.
 #[pyfunction]
 fn gen_GH() -> PyResult<Py<PyAny>> {
     Python::with_gil(|py|-> PyResult<Py<PyAny>> {
         let h = Point::<Bn254>::generator().into();
         let label = BigInt::from(1);
         let hash = Sha512::new().chain_bigint(&label).result_bigint();
+        // In generate_random_point, H is the curve generator, G is derived deterministically from a fixed label via hash-to-curve.
         let g = generate_random_point(&Converter::to_bytes(&hash));
         let pyref = PyCell::new(py, GH{G:g,H:h})?;
         Ok(pyref.to_object(py))
