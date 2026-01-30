@@ -342,12 +342,15 @@ class Bank:
         return vals
 
     def add_asset(self, val=0, asset_type=""):
+        """Adds an asset locally,
+        Caller must also call ledger.register_new_asset() to sync the asset to the ledger."""
         if val != 0:
             assert len(asset_type), "asset type is missing"
         
-        self.secret_balance_book.append([])
         self.r0.append(r_blend())
         self.v0.append(val)
+        new_idx = len(self.v0) - 1
+        self.secret_balance_book.append([(val, self.r0[new_idx])])
         self.cm0 = [Commit(self.gh, v, self.r0[i]) for i, v in enumerate(self.v0)]
         self.token0 = [self.sk_pk_obj.to_token(rl0.get()) for rl0 in self.r0]
         self.nassets += 1
