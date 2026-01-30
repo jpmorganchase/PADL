@@ -27,9 +27,9 @@ from pyledger.extras.injective_utils import InjectiveUtils
 from pyledger.Proof_Generation import ProofGenerator
 from pyledger.Proof_verification import Auditing
 
-# BITS = 64
+# BITS = 64, bit-length used for range proofs
 BITS = 32
-# MAX = int(2 ** (BITS / 4))
+# MAX = int(2 ** (BITS / 4)), brute-force search bound for value extraction via zkbp.get_brut_v
 MAX = int(2 ** 16)
 
 from enum import Enum

@@ -20,8 +20,7 @@ sys.path.append(parent_dir)
 from pyledger.zkutils import Commit, Token, r_blend, curve_util
 from pyledger.extras.injective_utils import InjectiveUtils
 from pyledger.Proof_Generation import ProofGenerator
-BITS = 64
-MAX = int(2 ** (BITS / 4))
+from pyledger.ledger import MAX 
 
 class CreateTx():
     def __init__(self, bank = None):
