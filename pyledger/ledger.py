@@ -359,8 +359,9 @@ class Bank:
         self.serialise()
         return self.initial_assets_cell[-1]
 
-    def append_asset_to_book(self, asset_i, v_r_pair, asset_type="", is_zero_cell=False):
+    def append_asset_to_book(self, asset_i, v_r_pair, asset_type="", is_zero_cell=False, allow_auto_add=True):
         if len(self.secret_balance_book) == asset_i:
+            assert allow_auto_add, "asset not registered"
             self.add_asset()
 
         self.secret_balance_book[asset_i].append(v_r_pair)
