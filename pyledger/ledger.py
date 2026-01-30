@@ -152,7 +152,7 @@ class Bank:
             else:
                 self.address = address
         else:
-            self.address = self # only for local test purposes
+            self.address = "" # only for local test purposes
 
         self.contract_address = contract_address
         self.contract_tx_name = contract_tx_name
