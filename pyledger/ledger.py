@@ -468,10 +468,15 @@ class MakeLedger:
                 self.state[-1].append(self.Cell.CellZero(self.pub_keys[id]))
 
     def register_zero_line(self, initial_assets_cell):
+        if len(self.state) not in (0, len(initial_assets_cell)):
+            raise ValueError("asset count mismatch")
+
         self.zero_line[-1] = initial_assets_cell
         for a in range(len(initial_assets_cell)):
-            if len(self.state) == a:
+            if len(self.state) <= a:
                 self.state.append([])
+            # Before appending this bank, each asset row should only contain previously registered banks
+            assert len(self.state[a]) == len(self.pub_keys) - 1, "state column mismatch"
             self.state[a].append(initial_assets_cell[a])
 
     def get_set_n_banks(self):
