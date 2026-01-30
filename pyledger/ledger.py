@@ -459,13 +459,17 @@ class MakeLedger:
         self.n_banks = len(self.pub_keys)
         return id
     def register_new_asset(self, asset_cell, id):
-        self.zero_line[id].append(asset_cell)
+        for p in range(self.n_banks):
+            if p == id:
+                self.zero_line[p].append(asset_cell)
+            else:
+                self.zero_line[p].append(self.Cell.CellZero(self.pub_keys[p]))
         self.state.append([])
         for p in range(self.n_banks):
             if p==id:
                 self.state[-1].append(asset_cell)
             else:
-                self.state[-1].append(self.Cell.CellZero(self.pub_keys[id]))
+                self.state[-1].append(self.Cell.CellZero(self.pub_keys[p]))
 
     def register_zero_line(self, initial_assets_cell):
         self.zero_line[-1] = initial_assets_cell
