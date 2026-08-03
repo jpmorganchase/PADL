@@ -1,0 +1,5 @@
+cargo test might run out of stack, use the following
+RUST_MIN_STACK=8388608 cargo test 
+
+change cargo.toml to d1024 or d256
+

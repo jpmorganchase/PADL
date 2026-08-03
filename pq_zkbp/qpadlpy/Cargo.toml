@@ -1,0 +1,14 @@
+[package]
+name = "zkqp"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "zkqp"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.21", features = ["extension-module","extension-module","abi3-py39"]  }
+num-traits = "0.2"
+# Depend on the core crate by path
+padl_pq = { path = "../padl_pq" }

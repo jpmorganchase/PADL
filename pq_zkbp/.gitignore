@@ -1,0 +1,15 @@
+/target
+/gaussian_sampler
+/backup
+/padl_pq/target
+/padl_pq/tmp
+<<<<<<< HEAD
+<<<<<<< HEAD
+/qpadlpy/target
+/python
+/.vscode
+/others
+/others/*
+.DS_STORE
+/padl_pq/.DS_Store
+.vscode/settings.json
