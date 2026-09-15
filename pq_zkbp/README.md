@@ -1,1 +1,1 @@
-# QPADL - Research only project.
+# pq_proj
