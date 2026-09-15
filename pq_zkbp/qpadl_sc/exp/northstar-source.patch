@@ -1,0 +1,1060 @@
+diff --git a/batch-stark/src/lib.rs b/batch-stark/src/lib.rs
+index 82c40d4e..ac7988f5 100644
+--- a/batch-stark/src/lib.rs
++++ b/batch-stark/src/lib.rs
+@@ -23,6 +23,6 @@ pub use config::{
+ pub use error::BatchVerificationError;
+ pub use p3_uni_stark::{OpenedValues, VerificationError};
+ pub use proof::{BatchCommitments, BatchOpenedValues, BatchProof};
+-pub use prover::{StarkInstance, prove_batch};
++pub use prover::{StarkInstance, prove_batch, prove_batch_with_northstar};
+ pub use transcript::BatchTranscript;
+-pub use verifier::{VerifierData, verify_batch};
++pub use verifier::{VerifierData, verify_batch, verify_batch_with_northstar};
+diff --git a/batch-stark/src/proof.rs b/batch-stark/src/proof.rs
+index da70f2a5..38e87074 100644
+--- a/batch-stark/src/proof.rs
++++ b/batch-stark/src/proof.rs
+@@ -36,6 +36,8 @@ pub struct BatchCommitments<Com> {
+     pub quotient_chunks: Com,
+     /// Commitment to all randomization polynomials (one per instance, if ZK is enabled).
+     pub random: Option<Com>,
++    /// Northstar sumcheck: commitment to [R, Q_sc, XR, XQ_sc].
++    pub northstar: Option<Com>,
+ }
+ 
+ /// Opened values for a single instance in a batch-STARK proof, including lookup-related values.
+@@ -54,4 +56,6 @@ pub struct OpenedValuesWithLookups<Challenge> {
+ pub struct BatchOpenedValues<Challenge> {
+     /// Opened values for each instance, in the same order as provided to the prover.
+     pub instances: Vec<OpenedValuesWithLookups<Challenge>>,
++    /// Northstar opened values: [R(zeta), Q_sc(zeta), XR(zeta), XQ_sc(zeta)].
++    pub northstar: Option<Vec<Challenge>>,
+ }
+diff --git a/batch-stark/src/prover.rs b/batch-stark/src/prover.rs
+index ba7fc493..6643dde2 100644
+--- a/batch-stark/src/prover.rs
++++ b/batch-stark/src/prover.rs
+@@ -114,6 +114,51 @@ pub fn prove_batch<
+     instances: &[StarkInstance<'_, SC, A>],
+     prover_data: &ProverData<SC>,
+ ) -> BatchProof<SC>
++where
++    SC: SGC,
++    Val<SC>: PrimeField,
++    SymbolicExpressionExt<Val<SC>, SC::Challenge>: Algebra<SC::Challenge>,
++    Domain<SC>: Send + Sync,
++    SC::Pcs: Sync,
++    <SC::Pcs as p3_commit::Pcs<SC::Challenge, SC::Challenger>>::ProverData: Sync,
++    <SC::Pcs as p3_commit::Pcs<SC::Challenge, SC::Challenger>>::Commitment: Sync,
++{
++    prove_batch_with_northstar::<SC, A, _>(
++        config,
++        instances,
++        prover_data,
++        None::<
++            fn(
++                Challenge<SC>,
++                Challenge<SC>,
++                Challenge<SC>,
++            ) -> p3_uni_stark::NorthstarProverData<SC>,
++        >,
++    )
++}
++
++/// Generate a batch STARK proof with optional Northstar zero-target sumcheck.
++///
++/// When `northstar_fn` is `Some(f)`, the prover squeezes (alpha_sc, rho) from
++/// the transcript after observing main + preprocessed, calls `f(alpha_sc, rho)`
++/// to get [R, Q_sc], commits them, and opens at zeta alongside the other rounds.
++#[instrument(skip_all)]
++pub fn prove_batch_with_northstar<
++    SC,
++    #[cfg(debug_assertions)] A: for<'a> Air<DebugConstraintBuilder<'a, Val<SC>, SC::Challenge>>
++        + Air<InteractionSymbolicBuilder<Val<SC>, SC::Challenge>>
++        + for<'a> Air<ProverConstraintFolderWithLookups<'a, SC>>
++        + Clone,
++    #[cfg(not(debug_assertions))] A: for<'a> Air<InteractionSymbolicBuilder<Val<SC>, SC::Challenge>>
++        + for<'a> Air<ProverConstraintFolderWithLookups<'a, SC>>
++        + Clone,
++    NF: FnOnce(Challenge<SC>, Challenge<SC>, Challenge<SC>) -> p3_uni_stark::NorthstarProverData<SC>,
++>(
++    config: &SC,
++    instances: &[StarkInstance<'_, SC, A>],
++    prover_data: &ProverData<SC>,
++    northstar_fn: Option<NF>,
++) -> BatchProof<SC>
+ where
+     SC: SGC,
+     Val<SC>: PrimeField,
+@@ -233,6 +278,20 @@ where
+     transcript.observe_main(&main_commit, &pub_vals);
+     transcript.observe_preprocessed(&preprocessed_widths, common.preprocessed.as_ref());
+ 
++    // --- Northstar sumcheck: squeeze challenges, compute + commit R, Q_sc ---
++    let has_northstar = northstar_fn.is_some();
++    let (northstar_commit_and_data, _northstar_domain) = if let Some(nf) = northstar_fn {
++        let (alpha_sc, eta, rho) = transcript.sample_northstar_challenges();
++        let northstar_data = nf(alpha_sc, eta, rho);
++        // The northstar trace [R, Q_sc] has the same domain size as instance 0's trace.
++        let n_domain = pcs.natural_domain_for_degree(northstar_data.rq_trace.height());
++        let (ns_commit, ns_data) = pcs.commit(vec![(n_domain, northstar_data.rq_trace)]);
++        transcript.observe_northstar_commitment(&ns_commit);
++        (Some((ns_commit, ns_data)), Some(n_domain))
++    } else {
++        (None, None)
++    };
++
+     // Transcript: Lookup challenges and permutation traces
+ 
+     // Draw per-instance challenges for the lookup argument.
+@@ -569,6 +628,12 @@ where
+             rounds.push(lookup_round);
+         }
+ 
++        // Round 5 (optional): Northstar [R, Q_sc] opened at zeta only.
++        if let Some((_, ref ns_data)) = northstar_commit_and_data {
++            // Single matrix with 2 columns, open at zeta.
++            rounds.push((ns_data, vec![vec![zeta]]));
++        }
++
+         pcs.open_with_preprocessing(
+             rounds,
+             &mut transcript.challenger,
+@@ -678,6 +743,7 @@ where
+             preprocessed_next,
+             quotient_chunks: qcs,
+             random,
++            northstar: None,
+         };
+ 
+         per_instance.push(OpenedValuesWithLookups {
+@@ -687,11 +753,24 @@ where
+         });
+     }
+ 
++    // Extract northstar opened values (last round if present).
++    let northstar_opened = if has_northstar {
++        // Northstar round is the very last round we pushed.
++        let ns_round = opened_values.last().expect("northstar round present");
++        // Single matrix, single opening point: ns_round[0][0] = [R(zeta), Q_sc(zeta)]
++        Some(ns_round[0][0].clone())
++    } else {
++        None
++    };
++
+     // Extract the permutation commitment (if any) for inclusion in the proof.
+     let permutation = permutation_commit_and_data
+         .as_ref()
+         .map(|(comm, _)| comm.clone());
+ 
++    // Extract the northstar commitment.
++    let northstar_commit_out = northstar_commit_and_data.map(|(c, _)| c);
++
+     // Assemble the final proof structure.
+     BatchProof {
+         commitments: BatchCommitments {
+@@ -699,9 +778,11 @@ where
+             quotient_chunks: quotient_commit,
+             random: opt_r_commit,
+             permutation,
++            northstar: northstar_commit_out,
+         },
+         opened_values: BatchOpenedValues {
+             instances: per_instance,
++            northstar: northstar_opened,
+         },
+         opening_proof,
+         lookup_terminals,
+diff --git a/batch-stark/src/transcript.rs b/batch-stark/src/transcript.rs
+index cdaaf660..cb466cbb 100644
+--- a/batch-stark/src/transcript.rs
++++ b/batch-stark/src/transcript.rs
+@@ -220,6 +220,19 @@ impl<SC: SGC> BatchTranscript<SC> {
+         self.challenger.sample_algebra_element()
+     }
+ 
++    /// Northstar: squeeze alpha_sc, eta, and rho challenges.
++    pub fn sample_northstar_challenges(&mut self) -> (Challenge<SC>, Challenge<SC>, Challenge<SC>) {
++        let alpha_sc = self.challenger.sample_algebra_element();
++        let eta = self.challenger.sample_algebra_element();
++        let rho = self.challenger.sample_algebra_element();
++        (alpha_sc, eta, rho)
++    }
++
++    /// Northstar: observe the [R, Q_sc] commitment.
++    pub fn observe_northstar_commitment(&mut self, commitment: &Commitment<SC>) {
++        self.challenger.observe(commitment.clone());
++    }
++
+     #[inline]
+     fn observe_usize(&mut self, v: usize) {
+         self.challenger
+diff --git a/batch-stark/src/verifier/mod.rs b/batch-stark/src/verifier/mod.rs
+index bf940377..0237f045 100644
+--- a/batch-stark/src/verifier/mod.rs
++++ b/batch-stark/src/verifier/mod.rs
+@@ -42,7 +42,54 @@ where
+     SymbolicExpressionExt<Val<SC>, SC::Challenge>: Algebra<SC::Challenge>,
+     A: Air<InteractionSymbolicBuilder<Val<SC>, SC::Challenge>>
+         + for<'a> Air<VerifierConstraintFolderWithLookups<'a, SC>>,
+-    Challenge<SC>: BasedVectorSpace<Val<SC>>,
++    Challenge<SC>: BasedVectorSpace<Val<SC>> + ExtensionField<Val<SC>>,
++{
++    verify_batch_impl(config, airs, proof, public_values, common, None)
++}
++
++/// Verify a batch STARK proof with Northstar zero-target sumcheck.
++#[instrument(skip_all)]
++pub fn verify_batch_with_northstar<SC, A>(
++    config: &SC,
++    airs: &[A],
++    proof: &BatchProof<SC>,
++    public_values: &[Vec<Val<SC>>],
++    common: &CommonData<SC>,
++    northstar_pre: &p3_uni_stark::NorthstarPrecomputed<Val<SC>>,
++) -> Result<(), BatchVerificationError<PcsError<SC>>>
++where
++    SC: SGC,
++    Val<SC>: PrimeField,
++    SymbolicExpressionExt<Val<SC>, SC::Challenge>: Algebra<SC::Challenge>,
++    A: Air<InteractionSymbolicBuilder<Val<SC>, SC::Challenge>>
++        + for<'a> Air<VerifierConstraintFolderWithLookups<'a, SC>>,
++    Challenge<SC>: BasedVectorSpace<Val<SC>> + ExtensionField<Val<SC>>,
++{
++    verify_batch_impl(
++        config,
++        airs,
++        proof,
++        public_values,
++        common,
++        Some(northstar_pre),
++    )
++}
++
++fn verify_batch_impl<SC, A>(
++    config: &SC,
++    airs: &[A],
++    proof: &BatchProof<SC>,
++    public_values: &[Vec<Val<SC>>],
++    common: &CommonData<SC>,
++    northstar_pre: Option<&p3_uni_stark::NorthstarPrecomputed<Val<SC>>>,
++) -> Result<(), BatchVerificationError<PcsError<SC>>>
++where
++    SC: SGC,
++    Val<SC>: PrimeField,
++    SymbolicExpressionExt<Val<SC>, SC::Challenge>: Algebra<SC::Challenge>,
++    A: Air<InteractionSymbolicBuilder<Val<SC>, SC::Challenge>>
++        + for<'a> Air<VerifierConstraintFolderWithLookups<'a, SC>>,
++    Challenge<SC>: BasedVectorSpace<Val<SC>> + ExtensionField<Val<SC>>,
+ {
+     // TODO: Extend if additional lookup gadgets are added.
+     let lookup_gadget = LogUpGadget::new();
+@@ -263,6 +310,15 @@ where
+     transcript.observe_main(&commitments.main, public_values);
+     transcript.observe_preprocessed(&preprocessed_widths, common.preprocessed.as_ref());
+ 
++    // If proof has northstar commitment, mirror the prover's transcript.
++    let northstar_challenges = if commitments.northstar.is_some() {
++        let (alpha_sc, eta, rho) = transcript.sample_northstar_challenges();
++        transcript.observe_northstar_commitment(commitments.northstar.as_ref().unwrap());
++        Some((alpha_sc, eta, rho))
++    } else {
++        None
++    };
++
+     // Validate the shape of the lookup commitment.
+     let is_lookup = commitments.permutation.is_some();
+ 
+@@ -488,6 +544,17 @@ where
+         coms_to_verify.push((permutation_commit, permutation_round));
+     }
+ 
++    // Northstar round: [R, Q_sc] opened at zeta (if present in proof).
++    if let (Some(ns_commit), Some(ns_opened)) = (&commitments.northstar, &opened_values.northstar) {
++        // We need the domain for the northstar polynomials.
++        // They share the same domain as instance 0's trace (all instances share the same N).
++        let ns_domain = ext_trace_domains[0];
++        coms_to_verify.push((
++            ns_commit.clone(),
++            vec![(ns_domain, vec![(zeta, ns_opened.clone())])],
++        ));
++    }
++
+     // Verify all openings via PCS.
+     pcs.verify(coms_to_verify, opening_proof, &mut transcript.challenger)
+         .map_err(VerificationError::InvalidOpeningArgument)?;
+@@ -626,5 +693,50 @@ where
+     //   per-bus imbalance survives the collapse with overwhelming probability.
+     lookup_gadget.verify_terminal_sum(lookup_terminals)?;
+ 
++    // Northstar identity check (if requested).
++    if let (Some(pre), Some((alpha_sc, eta, rho)), Some(ns_opened)) = (
++        northstar_pre,
++        northstar_challenges,
++        &opened_values.northstar,
++    ) {
++        // Reconstruct R, Q_sc, XR, and XQ_sc as extension-field values.
++        let ext_dim = Challenge::<SC>::DIMENSION;
++        if ns_opened.len() != 4 * ext_dim {
++            return Err(VerificationError::OodEvaluationMismatch { index: None }.into());
++        }
++
++        let r_zeta = Challenge::<SC>::from_ext_basis_coefficients(&ns_opened[..ext_dim])
++            .ok_or(VerificationError::<PcsError<SC>>::OodEvaluationMismatch { index: None })?;
++        let q_sc_zeta =
++            Challenge::<SC>::from_ext_basis_coefficients(&ns_opened[ext_dim..2 * ext_dim])
++                .ok_or(VerificationError::<PcsError<SC>>::OodEvaluationMismatch { index: None })?;
++        let xr_zeta =
++            Challenge::<SC>::from_ext_basis_coefficients(&ns_opened[2 * ext_dim..3 * ext_dim])
++                .ok_or(VerificationError::<PcsError<SC>>::OodEvaluationMismatch { index: None })?;
++        let xq_sc_zeta =
++            Challenge::<SC>::from_ext_basis_coefficients(&ns_opened[3 * ext_dim..4 * ext_dim])
++                .ok_or(VerificationError::<PcsError<SC>>::OodEvaluationMismatch { index: None })?;
++
++        // Get trace_local from instance 0.
++        let trace_local = &opened_values.instances[0].base_opened_values.trace_local;
++
++        let valid = p3_uni_stark::verify_northstar_identity(
++            trace_local,
++            alpha_sc,
++            eta,
++            rho,
++            zeta,
++            pre,
++            r_zeta,
++            q_sc_zeta,
++            xr_zeta,
++            xq_sc_zeta,
++        );
++
++        if !valid {
++            return Err(VerificationError::OodEvaluationMismatch { index: None }.into());
++        }
++    }
++
+     Ok(())
+ }
+diff --git a/batch-stark/tests/simple.rs b/batch-stark/tests/simple.rs
+index 8be2de79..791da031 100644
+--- a/batch-stark/tests/simple.rs
++++ b/batch-stark/tests/simple.rs
+@@ -1370,6 +1370,7 @@ fn test_invalid_trace_width_rejected() {
+             quotient_chunks: valid_proof.commitments.quotient_chunks,
+             permutation: valid_proof.commitments.permutation,
+             random: valid_proof.commitments.random,
++            northstar: valid_proof.commitments.northstar,
+         },
+         opened_values: BatchOpenedValues {
+             instances: vec![OpenedValuesWithLookups {
+@@ -1390,6 +1391,10 @@ fn test_invalid_trace_width_rejected() {
+                         .quotient_chunks
+                         .clone(),
+                     random: None,
++                    northstar: valid_proof.opened_values.instances[0]
++                        .base_opened_values
++                        .northstar
++                        .clone(),
+                 },
+                 permutation_local: valid_proof.opened_values.instances[0]
+                     .permutation_local
+@@ -1398,6 +1403,7 @@ fn test_invalid_trace_width_rejected() {
+                     .permutation_next
+                     .clone(),
+             }],
++            northstar: valid_proof.opened_values.northstar.clone(),
+         },
+         opening_proof: valid_proof.opening_proof.clone(),
+         lookup_terminals: valid_proof.lookup_terminals.clone(),
+diff --git a/uni-stark/src/lib.rs b/uni-stark/src/lib.rs
+index aac4b737..f027d05f 100644
+--- a/uni-stark/src/lib.rs
++++ b/uni-stark/src/lib.rs
+@@ -6,6 +6,7 @@ extern crate alloc;
+ mod config;
+ mod error;
+ mod folder;
++mod northstar;
+ mod preprocessed;
+ mod proof;
+ mod prover;
+@@ -17,6 +18,7 @@ mod verifier;
+ pub use config::*;
+ pub use error::*;
+ pub use folder::*;
++pub use northstar::*;
+ pub use p3_air::symbolic::*;
+ pub use preprocessed::*;
+ pub use proof::*;
+diff --git a/uni-stark/src/northstar.rs b/uni-stark/src/northstar.rs
+new file mode 100644
+index 00000000..a5bab8ef
+--- /dev/null
++++ b/uni-stark/src/northstar.rs
+@@ -0,0 +1,338 @@
++//! Northstar sumcheck: zero-target sumcheck protocol integrated into the STARK.
++//!
++//! The prover commits to R(X), Q_sc(X), and degree-bound witnesses XR(X), XQ_sc(X).
++//! The latter are constrained to equal X * R(X) and X * Q_sc(X) at the OOD point.
++//! Since FRI bounds every committed polynomial to degree < N, these identities
++//! force R and Q_sc to have degree < N - 1. The main identity at
++//! the OOD point zeta:
++//!
++//!   sum_i rho^(i-1) * [g_i(zeta)*sigma_alpha(zeta) - f_i(zeta)*Lambda'_alpha(zeta)]
++//!       = zeta * R(zeta) + Q_sc(zeta) * (zeta^N - 1)
++//!
++//! The f_i and g_i are trace columns whose openings are already available.
++
++use alloc::vec;
++use alloc::vec::Vec;
++
++use p3_field::{ExtensionField, Field};
++use p3_matrix::dense::RowMajorMatrix;
++use p3_maybe_rayon::prelude::*;
++use serde::{Deserialize, Serialize};
++
++use crate::{StarkGenericConfig, Val};
++
++/// Prover-side data for the Northstar sumcheck.
++///
++/// The caller (VFHE) computes R and Q_sc externally after receiving alpha_sc and rho
++/// from the transcript, then passes this struct to the extended prover.
++pub struct NorthstarProverData<SC: StarkGenericConfig> {
++    /// A base-field matrix [R, Q_sc, XR, XQ_sc] evaluated on the trace domain.
++    /// Extension-field values are flattened into base-field columns.
++    pub rq_trace: RowMajorMatrix<Val<SC>>,
++}
++
++/// Verifier-side specification for the Northstar sumcheck (stacked approach).
++///
++/// Tells the verifier which trace columns are f_tilde and g_tilde, and provides
++/// the domain parameters needed to evaluate the stacked sigma'_alpha and Lambda'_alpha.
++#[derive(Clone, Debug, Serialize, Deserialize)]
++pub struct NorthstarVerifierData {
++    /// Column indices in the main trace for the coefficient-domain polynomials (decomp_a).
++    pub f_col_indices: Vec<usize>,
++    /// Column indices in the main trace for the NTT-domain polynomials (decomp_a_ntt).
++    pub g_col_indices: Vec<usize>,
++    /// log2(N) where N is the per-block NTT size (e.g., 10 for N=1024).
++    pub log_n: usize,
++    /// Number of blocks (k). Total trace domain = k*N.
++    pub num_blocks: usize,
++    /// psi: the 2N-th root of unity for the per-block negacyclic NTT.
++    /// Stored as a raw u64 for the base field element.
++    pub psi_raw: u64,
++    /// omega_kn: the kN-th root of unity (full trace domain generator).
++    /// Stored as a raw u64 for the base field element.
++    pub omega_kn_raw: u64,
++}
++
++/// Precomputed domain data for the Northstar verifier.
++///
++/// Contains O(kN) base-field values that depend only on the domain parameters
++/// (`psi`, `omega_kn`, `n_block`, `num_blocks`) and NOT on verifier challenges.
++/// Construct once via [`NorthstarVerifierData::precompute`] and reuse across
++/// verifier invocations to keep the hot path free of domain arithmetic.
++pub struct NorthstarPrecomputed<F: Field> {
++    /// omega_kn^t for t in 0..kN (full trace-domain powers).
++    pub omega_powers: Vec<F>,
++    /// psi * omega_N^j for j in 0..N (negacyclic coset points).
++    pub coset_points: Vec<F>,
++    /// Per-block NTT size N.
++    pub n_block: usize,
++    /// Number of blocks k.
++    pub num_blocks: usize,
++    /// Column indices for f (coefficient-domain polynomials).
++    pub f_col_indices: Vec<usize>,
++    /// Column indices for g (NTT-domain polynomials).
++    pub g_col_indices: Vec<usize>,
++}
++
++fn shifted_degree_bounds_hold<F: Field>(
++    zeta: F,
++    r_zeta: F,
++    q_sc_zeta: F,
++    xr_zeta: F,
++    xq_sc_zeta: F,
++) -> bool {
++    xr_zeta == zeta * r_zeta && xq_sc_zeta == zeta * q_sc_zeta
++}
++
++impl NorthstarVerifierData {
++    /// Precompute domain tables that are independent of verifier challenges.
++    ///
++    /// For kN-th roots of unity $x_t = \omega_{kN}^t$, the barycentric weight is:
++    /// $$w_t = \frac{1}{\prod_{j \neq t}(x_t - x_j)} = \frac{\omega_{kN}^t}{kN}$$
++    ///
++    /// The Lagrange basis at evaluation point $z$ is then:
++    /// $$L_t(z) = \ell(z) \cdot \frac{w_t}{z - x_t} = \frac{z^{kN}-1}{kN} \cdot \frac{\omega_{kN}^t}{z - \omega_{kN}^t}$$
++    ///
++    /// We store `omega_powers[t]` = $\omega_{kN}^t$ (the numerator of $w_t$ up to
++    /// the shared $1/(kN)$ factor, which is applied once as a scalar in the verifier).
++    ///
++    /// For the negacyclic coset $c_j = \psi \omega_N^j$ (where $\psi^{2N}=1$,
++    /// $\psi^N = -1$), the barycentric weight is:
++    /// $$w_j = \frac{1}{\prod_{k \neq j}(c_j - c_k)} = \frac{-1}{N \cdot c_j}$$
++    /// equivalently $-c_j / N$ after noting $c_j^N = -1$ so $c_j^{N-1} = -c_j^{-1}$.
++    ///
++    /// We store `coset_points[j]` = $c_j = \psi \omega_N^j$, from which $w_j = -c_j/N$.
++    pub fn precompute<F: Field>(&self) -> NorthstarPrecomputed<F> {
++        let n_block = 1usize << self.log_n;
++        let kn = self.num_blocks * n_block;
++        let psi = F::from_u64(self.psi_raw);
++        let omega_kn = F::from_u64(self.omega_kn_raw);
++        let omega_n = psi * psi; // N-th root of unity
++
++        // omega_kn^t for t in 0..kN
++        let mut omega_powers: Vec<F> = Vec::with_capacity(kn);
++        let mut omega_power = F::ONE;
++        for _t in 0..kn {
++            omega_powers.push(omega_power);
++            omega_power *= omega_kn;
++        }
++
++        // psi * omega_N^j for j in 0..N
++        let mut coset_points: Vec<F> = Vec::with_capacity(n_block);
++        let mut omega_n_pow = F::ONE;
++        for _j in 0..n_block {
++            coset_points.push(psi * omega_n_pow);
++            omega_n_pow *= omega_n;
++        }
++
++        NorthstarPrecomputed {
++            omega_powers,
++            coset_points,
++            n_block,
++            num_blocks: self.num_blocks,
++            f_col_indices: self.f_col_indices.clone(),
++            g_col_indices: self.g_col_indices.clone(),
++        }
++    }
++}
++
++/// Verify the Northstar stacked identity at point zeta.
++///
++/// Checks:
++///   sum_l rho^l * [f_l(zeta)*sigma'(zeta) - g_l(zeta)*Lambda'(zeta)]
++///       == zeta * R(zeta) + Q_sc(zeta) * (zeta^{kN} - 1)
++///
++/// sigma'(z) and Lambda'(z) are evaluated via O(kN) Lagrange interpolation
++/// with batch inversion (Montgomery's trick) for efficiency.
++///
++/// The `precomputed` argument holds domain tables (omega powers, coset points)
++/// that are independent of verifier challenges and can be built once via
++/// [`NorthstarVerifierData::precompute`].
++pub fn verify_northstar_identity<F: Field, EF: ExtensionField<F>>(
++    trace_local: &[EF],
++    alpha_sc: EF,
++    eta: EF,
++    rho: EF,
++    zeta: EF,
++    precomputed: &NorthstarPrecomputed<F>,
++    r_zeta: EF,
++    q_sc_zeta: EF,
++    xr_zeta: EF,
++    xq_sc_zeta: EF,
++) -> bool {
++    let f_col_indices = &precomputed.f_col_indices;
++    let g_col_indices = &precomputed.g_col_indices;
++    assert_eq!(f_col_indices.len(), g_col_indices.len());
++    let m = f_col_indices.len();
++    let n_block = precomputed.n_block;
++    let num_blocks = precomputed.num_blocks;
++    let kn = num_blocks * n_block;
++
++    let kn_field = EF::from_u64(kn as u64);
++    let n_field = EF::from_u64(n_block as u64);
++    let z_kn = zeta.exp_u64(kn as u64);
++    let vanishing_kn = z_kn - EF::ONE;
++    let alpha_n = alpha_sc.exp_u64(n_block as u64);
++    let one_plus_alpha_n = EF::ONE + alpha_n;
++
++    // Compute Lagrange coset values: L_{psi*omega_N^j}(alpha_sc)
++    // using precomputed coset points and batch inversion (Montgomery's trick).
++    let coset_diffs: Vec<EF> = (0..n_block)
++        .map(|j| {
++            let psi_omega_j: EF = precomputed.coset_points[j].into();
++            n_field * (alpha_sc - psi_omega_j)
++        })
++        .collect();
++
++    // Batch-invert all N coset denominators with a single inversion.
++    let mut coset_prefix: Vec<EF> = Vec::with_capacity(n_block);
++    coset_prefix.push(coset_diffs[0]);
++    for j in 1..n_block {
++        coset_prefix.push(coset_prefix[j - 1] * coset_diffs[j]);
++    }
++    let mut coset_inv_suffix = coset_prefix[n_block - 1].inverse();
++    let mut inv_coset_diffs: Vec<EF> = vec![EF::ZERO; n_block];
++    for j in (1..n_block).rev() {
++        inv_coset_diffs[j] = coset_inv_suffix * coset_prefix[j - 1];
++        coset_inv_suffix *= coset_diffs[j];
++    }
++    inv_coset_diffs[0] = coset_inv_suffix;
++
++    let lagrange_coset: Vec<EF> = (0..n_block)
++        .map(|j| {
++            let psi_omega_j: EF = precomputed.coset_points[j].into();
++            -psi_omega_j * one_plus_alpha_n * inv_coset_diffs[j]
++        })
++        .collect();
++
++    // --- Parallel batch inversion (divide-and-conquer) for all kN denominators ---
++    // Compute diffs[t] = zeta - omega_kn^t using precomputed omega_powers.
++    let omega_powers = &precomputed.omega_powers;
++
++    let diffs: Vec<EF> = omega_powers
++        .par_iter()
++        .map(|&w| zeta - EF::from(w))
++        .collect();
++
++    // Divide kN elements into chunks. Each chunk is batch-inverted independently
++    // (1 inversion + O(chunk_size) muls per chunk), and all chunks run in parallel.
++    // Total work: O(kN) muls + num_chunks inversions.
++    // With num_blocks chunks of size n_block, we get num_blocks inversions
++    // (one per block) but the sequential path within each chunk is only O(N).
++    let chunk_size = n_block; // one chunk per block
++    let inv_diffs: Vec<EF> = diffs
++        .par_chunks(chunk_size)
++        .flat_map_iter(|chunk| {
++            let len = chunk.len();
++            // Montgomery's trick within this chunk
++            let mut prefix = Vec::with_capacity(len);
++            prefix.push(chunk[0]);
++            for i in 1..len {
++                prefix.push(prefix[i - 1] * chunk[i]);
++            }
++            let mut inv_suffix = prefix[len - 1].inverse();
++            let mut inv_chunk = vec![EF::ZERO; len];
++            for i in (1..len).rev() {
++                inv_chunk[i] = inv_suffix * prefix[i - 1];
++                inv_suffix *= chunk[i];
++            }
++            inv_chunk[0] = inv_suffix;
++            inv_chunk
++        })
++        .collect();
++
++    // --- Parallel accumulation of sigma'(zeta) and Lambda'(zeta) ---
++    // Each block i contributes independently; reduce partial sums via par_iter.
++    // Pre-compute eta_powers[i] = eta^i and alpha_powers[j] = alpha_sc^j.
++    let mut alpha_powers: Vec<EF> = Vec::with_capacity(n_block);
++    let mut ap = EF::ONE;
++    for _j in 0..n_block {
++        alpha_powers.push(ap);
++        ap *= alpha_sc;
++    }
++
++    let mut eta_powers: Vec<EF> = Vec::with_capacity(num_blocks);
++    let mut ep = EF::ONE;
++    for _i in 0..num_blocks {
++        eta_powers.push(ep);
++        ep *= eta;
++    }
++
++    let block_sums: Vec<(EF, EF)> = (0..num_blocks)
++        .into_par_iter()
++        .map(|i| {
++            let base_t = i * n_block;
++            let eta_i = eta_powers[i];
++            let mut s = EF::ZERO;
++            let mut l = EF::ZERO;
++            for j in 0..n_block {
++                let t = base_t + j;
++                let omega_m: EF = omega_powers[t].into();
++                let basis_contrib = omega_m * inv_diffs[t];
++                s += eta_i * alpha_powers[j] * basis_contrib;
++                l += eta_i * lagrange_coset[j] * basis_contrib;
++            }
++            (s, l)
++        })
++        .collect();
++    let (sigma_z, lambda_z) = block_sums
++        .into_iter()
++        .fold((EF::ZERO, EF::ZERO), |(s1, l1), (s2, l2)| {
++            (s1 + s2, l1 + l2)
++        });
++
++    // Multiply by (z^{kN} - 1) / (kN)
++    let scale = vanishing_kn * kn_field.inverse();
++    let sigma_z = sigma_z * scale;
++    let lambda_z = lambda_z * scale;
++
++    // Compute LHS: sum_l rho^l * [f_l(zeta)*sigma'(zeta) - g_l(zeta)*Lambda'(zeta)]
++    let mut lhs = EF::ZERO;
++    let mut rho_power = EF::ONE;
++    for l in 0..m {
++        let f_zeta = trace_local[f_col_indices[l]];
++        let g_zeta = trace_local[g_col_indices[l]];
++        lhs += rho_power * (f_zeta * sigma_z - g_zeta * lambda_z);
++        rho_power *= rho;
++    }
++
++    // RHS: zeta * R(zeta) + Q_sc(zeta) * (zeta^{kN} - 1)
++    let rhs = zeta * r_zeta + q_sc_zeta * vanishing_kn;
++
++    lhs == rhs && shifted_degree_bounds_hold(zeta, r_zeta, q_sc_zeta, xr_zeta, xq_sc_zeta)
++}
++
++#[cfg(test)]
++mod tests {
++    use p3_baby_bear::BabyBear;
++    use p3_field::PrimeCharacteristicRing;
++
++    use super::shifted_degree_bounds_hold;
++
++    #[test]
++    fn shifted_degree_bounds_reject_incorrect_r_or_q_witness() {
++        let zeta = BabyBear::from_u64(2);
++        let r_zeta = BabyBear::from_u64(3);
++        let q_sc_zeta = BabyBear::from_u64(5);
++        let xr_zeta = zeta * r_zeta;
++        let xq_sc_zeta = zeta * q_sc_zeta;
++
++        assert!(shifted_degree_bounds_hold(
++            zeta, r_zeta, q_sc_zeta, xr_zeta, xq_sc_zeta,
++        ));
++        assert!(!shifted_degree_bounds_hold(
++            zeta,
++            r_zeta,
++            q_sc_zeta,
++            xr_zeta + BabyBear::ONE,
++            xq_sc_zeta,
++        ));
++        assert!(!shifted_degree_bounds_hold(
++            zeta,
++            r_zeta,
++            q_sc_zeta,
++            xr_zeta,
++            xq_sc_zeta + BabyBear::ONE,
++        ));
++    }
++}
+diff --git a/uni-stark/src/proof.rs b/uni-stark/src/proof.rs
+index 57fb60cc..6d0bf2b6 100644
+--- a/uni-stark/src/proof.rs
++++ b/uni-stark/src/proof.rs
+@@ -48,6 +48,8 @@ pub struct Commitments<Com> {
+     pub trace: Com,
+     pub quotient_chunks: Com,
+     pub random: Option<Com>,
++    /// Northstar sumcheck: commitment to [R, Q_sc, XR, XQ_sc].
++    pub northstar: Option<Com>,
+ }
+ 
+ #[derive(Debug, Serialize, Deserialize)]
+@@ -61,4 +63,6 @@ pub struct OpenedValues<Challenge> {
+     pub preprocessed_next: Option<Vec<Challenge>>, // may not always be necessary
+     pub quotient_chunks: Vec<Vec<Challenge>>,
+     pub random: Option<Vec<Challenge>>,
++    /// Northstar sumcheck: [R(zeta), Q_sc(zeta), XR(zeta), XQ_sc(zeta)].
++    pub northstar: Option<Vec<Challenge>>,
+ }
+diff --git a/uni-stark/src/prover.rs b/uni-stark/src/prover.rs
+index a8d0eea5..e6efd399 100644
+--- a/uni-stark/src/prover.rs
++++ b/uni-stark/src/prover.rs
+@@ -35,6 +35,38 @@ pub fn prove_with_preprocessed<
+ where
+     SC: StarkGenericConfig,
+     A: Air<SymbolicAirBuilder<Val<SC>>> + for<'a> Air<ProverConstraintFolder<'a, SC>>,
++{
++    prove_with_preprocessed_and_northstar::<
++        SC,
++        A,
++        fn(SC::Challenge, SC::Challenge, SC::Challenge) -> crate::NorthstarProverData<SC>,
++    >(config, air, trace, public_values, preprocessed, None)
++}
++
++/// Internal: prove with optional Northstar sumcheck support.
++#[instrument(skip_all)]
++#[allow(
++    clippy::multiple_bound_locations,
++    clippy::type_repetition_in_bounds,
++    clippy::too_many_arguments
++)]
++pub fn prove_with_preprocessed_and_northstar<
++    SC,
++    #[cfg(debug_assertions)] A: for<'a> Air<p3_air::DebugConstraintBuilder<'a, Val<SC>>>,
++    #[cfg(not(debug_assertions))] A,
++    NF,
++>(
++    config: &SC,
++    air: &A,
++    trace: RowMajorMatrix<Val<SC>>,
++    public_values: &[Val<SC>],
++    preprocessed: Option<&PreprocessedProverData<SC>>,
++    northstar_fn: Option<NF>,
++) -> Proof<SC>
++where
++    SC: StarkGenericConfig,
++    A: Air<SymbolicAirBuilder<Val<SC>>> + for<'a> Air<ProverConstraintFolder<'a, SC>>,
++    NF: FnOnce(SC::Challenge, SC::Challenge, SC::Challenge) -> crate::NorthstarProverData<SC>,
+ {
+     #[cfg(debug_assertions)]
+     p3_air::check_constraints(air, &trace, public_values);
+@@ -172,6 +204,25 @@ where
+     // Observe the public input values.
+     challenger.observe_slice(public_values);
+ 
++    // --- Northstar sumcheck: squeeze challenges and commit R, Q_sc ---
++    let (northstar_commit, northstar_data) = if let Some(ns_fn) = northstar_fn {
++        // Squeeze alpha_sc, eta, and rho from the transcript (after trace commitment).
++        let alpha_sc: SC::Challenge = challenger.sample_algebra_element();
++        let eta: SC::Challenge = challenger.sample_algebra_element();
++        let rho: SC::Challenge = challenger.sample_algebra_element();
++
++        // Callback computes R(X) and Q_sc(X) using these challenges.
++        let ns_data = ns_fn(alpha_sc, eta, rho);
++
++        // Commit [R, Q_sc] on the same extended trace domain.
++        let (ns_commit, ns_prover_data) = info_span!("commit to northstar R,Q_sc")
++            .in_scope(|| pcs.commit([(ext_trace_domain, ns_data.rq_trace)]));
++        challenger.observe(ns_commit.clone());
++        (Some(ns_commit), Some(ns_prover_data))
++    } else {
++        (None, None)
++    };
++
+     // Get the first Fiat Shamir challenge which will be used to combine all constraint polynomials
+     // into a single polynomial.
+     //
+@@ -279,6 +330,7 @@ where
+         trace: trace_commit,
+         quotient_chunks: quotient_commit,
+         random: opt_r_commit.clone(),
++        northstar: northstar_commit.clone(),
+     };
+ 
+     if let Some(r_commit) = opt_r_commit {
+@@ -302,6 +354,7 @@ where
+         .expect("domain should support next_point operation");
+ 
+     let is_random = opt_r_data.is_some();
++    let has_northstar = northstar_data.is_some();
+     let main_next = !air.main_next_row_columns().is_empty();
+     let pre_next = !air.preprocessed_next_row_columns().is_empty();
+     let (opened_values, opening_proof) = info_span!("open").in_scope(|| {
+@@ -321,11 +374,17 @@ where
+             };
+             (data, vec![pre_points])
+         });
++        // Northstar: open [R, Q_sc] at zeta (single matrix with 2 columns → 1 poly group)
++        // Placed after preprocessed to avoid shifting existing PCS indices.
++        let round_ns = northstar_data
++            .as_ref()
++            .map(|ns_data| (ns_data, vec![vec![zeta]]));
+ 
+         let rounds = round0
+             .into_iter()
+             .chain([round1, round2])
+             .chain(round3)
++            .chain(round_ns)
+             .collect();
+ 
+         pcs.open_with_preprocessing(rounds, &mut challenger, preprocessed_data_ref.is_some())
+@@ -358,6 +417,14 @@ where
+     } else {
+         (None, None)
+     };
++    // Northstar opened values: [R(zeta), Q_sc(zeta)] are the last round if present.
++    let northstar_opened = if has_northstar {
++        // Northstar round is appended last; its index is after all other rounds.
++        let ns_idx = opened_values.len() - 1;
++        Some(opened_values[ns_idx][0][0].clone())
++    } else {
++        None
++    };
+     let opened_values = OpenedValues {
+         trace_local,
+         trace_next,
+@@ -365,6 +432,7 @@ where
+         preprocessed_next,
+         quotient_chunks,
+         random,
++        northstar: northstar_opened,
+     };
+     Proof {
+         commitments,
+@@ -393,6 +461,41 @@ where
+     prove_with_preprocessed::<SC, A>(config, air, trace, public_values, None)
+ }
+ 
++/// Prove with Northstar sumcheck.
++///
++/// `northstar_fn` is a callback that receives (alpha_sc, rho) challenges after the trace
++/// is committed, and returns the NorthstarProverData (the [R, Q_sc] matrix).
++/// This avoids modifying the core prove loop significantly.
++#[instrument(skip_all)]
++#[allow(clippy::multiple_bound_locations, clippy::type_repetition_in_bounds)]
++pub fn prove_with_northstar<
++    SC,
++    #[cfg(debug_assertions)] A: for<'a> Air<p3_air::DebugConstraintBuilder<'a, Val<SC>>>,
++    #[cfg(not(debug_assertions))] A,
++    F,
++>(
++    config: &SC,
++    air: &A,
++    trace: RowMajorMatrix<Val<SC>>,
++    public_values: &[Val<SC>],
++    preprocessed: Option<&PreprocessedProverData<SC>>,
++    northstar_fn: F,
++) -> Proof<SC>
++where
++    SC: StarkGenericConfig,
++    A: Air<SymbolicAirBuilder<Val<SC>>> + for<'a> Air<ProverConstraintFolder<'a, SC>>,
++    F: FnOnce(SC::Challenge, SC::Challenge, SC::Challenge) -> crate::NorthstarProverData<SC>,
++{
++    prove_with_preprocessed_and_northstar::<SC, A, F>(
++        config,
++        air,
++        trace,
++        public_values,
++        preprocessed,
++        Some(northstar_fn),
++    )
++}
++
+ #[instrument(skip_all, level = "debug")]
+ // TODO: Group some arguments to remove the `allow`?
+ #[allow(clippy::too_many_arguments)]
+diff --git a/uni-stark/src/verifier.rs b/uni-stark/src/verifier.rs
+index ab15b27d..203df35f 100644
+--- a/uni-stark/src/verifier.rs
++++ b/uni-stark/src/verifier.rs
+@@ -291,6 +291,48 @@ pub fn verify_with_preprocessed<SC, A>(
+     public_values: &[Val<SC>],
+     preprocessed_vk: Option<&PreprocessedVerifierKey<SC>>,
+ ) -> Result<(), VerificationError<PcsError<SC>>>
++where
++    SC: StarkGenericConfig,
++    A: Air<SymbolicAirBuilder<Val<SC>>> + for<'a> Air<VerifierConstraintFolder<'a, SC>>,
++{
++    verify_with_preprocessed_and_northstar(config, air, proof, public_values, preprocessed_vk, None)
++}
++
++/// Verify a STARK proof that includes a Northstar sumcheck.
++///
++/// `northstar_pre` provides the precomputed domain tables and column indices for the sumcheck identity.
++#[instrument(skip_all)]
++pub fn verify_with_northstar<SC, A>(
++    config: &SC,
++    air: &A,
++    proof: &Proof<SC>,
++    public_values: &[Val<SC>],
++    preprocessed_vk: Option<&PreprocessedVerifierKey<SC>>,
++    northstar_pre: &crate::NorthstarPrecomputed<Val<SC>>,
++) -> Result<(), VerificationError<PcsError<SC>>>
++where
++    SC: StarkGenericConfig,
++    A: Air<SymbolicAirBuilder<Val<SC>>> + for<'a> Air<VerifierConstraintFolder<'a, SC>>,
++{
++    verify_with_preprocessed_and_northstar(
++        config,
++        air,
++        proof,
++        public_values,
++        preprocessed_vk,
++        Some(northstar_pre),
++    )
++}
++
++#[instrument(skip_all)]
++fn verify_with_preprocessed_and_northstar<SC, A>(
++    config: &SC,
++    air: &A,
++    proof: &Proof<SC>,
++    public_values: &[Val<SC>],
++    preprocessed_vk: Option<&PreprocessedVerifierKey<SC>>,
++    northstar_pre: Option<&crate::NorthstarPrecomputed<Val<SC>>>,
++) -> Result<(), VerificationError<PcsError<SC>>>
+ where
+     SC: StarkGenericConfig,
+     A: Air<SymbolicAirBuilder<Val<SC>>> + for<'a> Air<VerifierConstraintFolder<'a, SC>>,
+@@ -423,6 +465,21 @@ where
+     }
+     challenger.observe_slice(public_values);
+ 
++    // --- Northstar: re-derive alpha_sc, rho and observe northstar commitment ---
++    let northstar_challenges = if northstar_pre.is_some() {
++        let alpha_sc: SC::Challenge = challenger.sample_algebra_element();
++        let eta: SC::Challenge = challenger.sample_algebra_element();
++        let rho: SC::Challenge = challenger.sample_algebra_element();
++        if let Some(ns_commit) = commitments.northstar.clone() {
++            challenger.observe(ns_commit);
++        } else {
++            return Err(VerificationError::OodEvaluationMismatch { index: None });
++        }
++        Some((alpha_sc, eta, rho))
++    } else {
++        None
++    };
++
+     // Get the first Fiat Shamir challenge which will be used to combine all constraint polynomials
+     // into a single polynomial.
+     //
+@@ -517,6 +574,18 @@ where
+         ));
+     }
+ 
++    // Add northstar commitment verification if present
++    if let Some(ns_commit) = &commitments.northstar {
++        let ns_values = opened_values
++            .northstar
++            .as_ref()
++            .ok_or(VerificationError::OodEvaluationMismatch { index: None })?;
++        coms_to_verify.push((
++            ns_commit.clone(),
++            vec![(trace_domain, vec![(zeta, ns_values.clone())])],
++        ));
++    }
++
+     pcs.verify(coms_to_verify, opening_proof, &mut challenger)
+         .map_err(VerificationError::InvalidOpeningArgument)?;
+ 
+@@ -557,5 +626,45 @@ where
+         quotient,
+     )?;
+ 
++    // --- Northstar identity verification ---
++    if let Some((alpha_sc, eta, rho)) = northstar_challenges {
++        let pre = northstar_pre.unwrap();
++        let ns_opened = opened_values
++            .northstar
++            .as_ref()
++            .ok_or(VerificationError::OodEvaluationMismatch { index: None })?;
++
++        let ext_dim = SC::Challenge::DIMENSION;
++        if ns_opened.len() != 4 * ext_dim {
++            return Err(VerificationError::OodEvaluationMismatch { index: None });
++        }
++        let r_zeta = SC::Challenge::from_ext_basis_coefficients(&ns_opened[..ext_dim])
++            .ok_or(VerificationError::OodEvaluationMismatch { index: None })?;
++        let q_sc_zeta =
++            SC::Challenge::from_ext_basis_coefficients(&ns_opened[ext_dim..2 * ext_dim])
++                .ok_or(VerificationError::OodEvaluationMismatch { index: None })?;
++        let xr_zeta =
++            SC::Challenge::from_ext_basis_coefficients(&ns_opened[2 * ext_dim..3 * ext_dim])
++                .ok_or(VerificationError::OodEvaluationMismatch { index: None })?;
++        let xq_sc_zeta =
++            SC::Challenge::from_ext_basis_coefficients(&ns_opened[3 * ext_dim..4 * ext_dim])
++                .ok_or(VerificationError::OodEvaluationMismatch { index: None })?;
++
++        if !crate::verify_northstar_identity::<Val<SC>, SC::Challenge>(
++            &opened_values.trace_local,
++            alpha_sc,
++            eta,
++            rho,
++            zeta,
++            pre,
++            r_zeta,
++            q_sc_zeta,
++            xr_zeta,
++            xq_sc_zeta,
++        ) {
++            return Err(VerificationError::OodEvaluationMismatch { index: None });
++        }
++    }
++
+     Ok(())
+ }

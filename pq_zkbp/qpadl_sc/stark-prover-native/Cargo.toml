@@ -1,0 +1,26 @@
+[package]
+name = "stark-prover-native"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+ark-ff = { version = "0.5", features = ["asm"] }
+napi = { version = "2", features = ["napi6", "serde-json"] }
+napi-derive = "2"
+ruint = "1"
+tiny-keccak = { version = "2", features = ["keccak"] }
+rand = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rayon = "1"
+
+[build-dependencies]
+napi-build = "2"
+
+[profile.release]
+lto = true
+opt-level = 3
+codegen-units = 1

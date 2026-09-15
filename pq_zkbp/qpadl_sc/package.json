@@ -1,0 +1,17 @@
+{
+  "name": "hardhat-project",
+  "devDependencies": {
+    "@napi-rs/cli": "^2.18.4",
+    "@nomicfoundation/hardhat-toolbox": "^6.1.1",
+    "hardhat": "^2.27.0",
+    "solc": "0.8.26",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  }
+}

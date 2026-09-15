@@ -1,0 +1,241 @@
+diff --git a/fhe_core/src/blind_rotation/rlwe/binary.rs b/fhe_core/src/blind_rotation/rlwe/binary.rs
+index 616cbde..b411059 100644
+--- a/fhe_core/src/blind_rotation/rlwe/binary.rs
++++ b/fhe_core/src/blind_rotation/rlwe/binary.rs
+@@ -24,6 +24,12 @@ impl<F: NTTField> BinaryBlindRotationKey<F> {
+         Self { key }
+     }
+ 
++    /// Returns the RGSW ciphertexts composing this blind rotation key.
++    #[inline]
++    pub fn key(&self) -> &[NTTRGSW<F>] {
++        &self.key
++    }
++
+     /// Performs the blind rotation operation.
+     pub fn blind_rotate(&self, mut lut: Polynomial<F>, lwe: &LWE<<F as Field>::Value>) -> RLWE<F> {
+         let rlwe_dimension = lut.coeff_count();
+diff --git a/fhe_core/src/blind_rotation/rlwe/mod.rs b/fhe_core/src/blind_rotation/rlwe/mod.rs
+index a980566..ae8153e 100644
+--- a/fhe_core/src/blind_rotation/rlwe/mod.rs
++++ b/fhe_core/src/blind_rotation/rlwe/mod.rs
+@@ -40,6 +40,15 @@ impl<F: NTTField> BlindRotationKey<F> {
+         Self::Ternary(key)
+     }
+ 
++    /// Returns the binary RGSW key entries, or `None` for a ternary key.
++    #[inline]
++    pub fn binary_key(&self) -> Option<&[lattice::NTTRGSW<F>]> {
++        match self {
++            Self::Binary(key) => Some(key.key()),
++            Self::Ternary(_) => None,
++        }
++    }
++
+     /// Performs the blind rotation operation.
+     pub fn blind_rotate(
+         &self,
+diff --git a/fhe_core/src/key_switch/rlwe.rs b/fhe_core/src/key_switch/rlwe.rs
+index ed37173..0c14cf9 100644
+--- a/fhe_core/src/key_switch/rlwe.rs
++++ b/fhe_core/src/key_switch/rlwe.rs
+@@ -33,6 +33,12 @@ impl<Q: NTTField> KeySwitchingRLWEKey<Q> {
+         self.key.len() * self.key[0].basis().decompose_len()
+     }
+ 
++    /// Returns the gadget RLWE ciphertexts composing this key switching key.
++    #[inline]
++    pub fn key(&self) -> &[NTTGadgetRLWE<Q>] {
++        &self.key
++    }
++
+     /// Generates a new [`KeySwitchingKey`].
+     pub fn generate(secret_key_pack: &SecretKeyPack<Q>) -> KeySwitchingRLWEKey<Q> {
+         let parameters = secret_key_pack.parameters();
+diff --git a/fhe_core/src/modulus_switch.rs b/fhe_core/src/modulus_switch.rs
+index 2590fad..a3b2d92 100644
+--- a/fhe_core/src/modulus_switch.rs
++++ b/fhe_core/src/modulus_switch.rs
+@@ -6,6 +6,22 @@ use trace::modulus_switching_trace::ModulusSwitchingTrace;
+ 
+ use crate::LWECiphertext;
+ 
++#[inline]
++fn modulus_switch_value<T: UnsignedInteger>(
++    value: u128,
++    modulus_before: u128,
++    modulus_after: T,
++) -> T {
++    let modulus_after: u128 = modulus_after.as_into();
++    assert!(modulus_before != 0, "source modulus must be nonzero");
++
++    let numerator = value
++        .checked_mul(modulus_after)
++        .and_then(|product| product.checked_add(modulus_before / 2))
++        .expect("modulus switch intermediate exceeds u128");
++    T::as_from((numerator / modulus_before) % modulus_after)
++}
++
+ /// Implementation of modulus switching.
+ ///
+ /// This function performs on a `LWE<F>`, returns a `LWE<C>` with desired modulus `modulus_after`.
+@@ -13,23 +29,9 @@ pub fn lwe_modulus_switch<T: UnsignedInteger, F: DecomposableField>(
+     c: &LWE<F>,
+     modulus_after: T,
+ ) -> LWECiphertext<T> {
+-    let modulus_before_f64: f64 = F::MODULUS_VALUE.as_into();
+-    let modulus_after_f64: f64 = modulus_after.as_into();
+-
+-    let reduce = |v: T| {
+-        if v < modulus_after {
+-            v
+-        } else {
+-            v - modulus_after
+-        }
+-    };
+-
+-    let switch = |v: F| {
+-        let v: f64 = v.value().as_into();
+-        reduce(T::as_from(
+-            (v * modulus_after_f64 / modulus_before_f64).round(),
+-        ))
+-    };
++    let modulus_before = F::MODULUS_VALUE.as_into();
++    let switch =
++        |value: F| modulus_switch_value(value.value().as_into(), modulus_before, modulus_after);
+ 
+     let a: Vec<T> = c.a().iter().copied().map(&switch).collect();
+     let b = switch(c.b());
+@@ -42,23 +44,9 @@ pub fn lwe_modulus_switch_w_trace<T: UnsignedInteger, F: DecomposableField>(
+     c: &LWE<F>,
+     modulus_after: T,
+ ) -> (LWECiphertext<T>, ModulusSwitchingTrace<F>) {
+-    let modulus_before_f64: f64 = F::MODULUS_VALUE.as_into();
+-    let modulus_after_f64: f64 = modulus_after.as_into();
+-
+-    let reduce = |v: T| {
+-        if v < modulus_after {
+-            v
+-        } else {
+-            v - modulus_after
+-        }
+-    };
+-
+-    let switch = |v: F| {
+-        let v: f64 = v.value().as_into();
+-        reduce(T::as_from(
+-            (v * modulus_after_f64 / modulus_before_f64).round(),
+-        ))
+-    };
++    let modulus_before = F::MODULUS_VALUE.as_into();
++    let switch =
++        |value: F| modulus_switch_value(value.value().as_into(), modulus_before, modulus_after);
+ 
+     let conver_to_field = |v: T| {
+         let v: usize = v.as_into();
+@@ -94,23 +82,9 @@ pub fn lwe_modulus_switch_inplace<T: UnsignedInteger, F: DecomposableField>(
+     modulus_after: T,
+     destination: &mut LWECiphertext<T>,
+ ) {
+-    let modulus_before_f64: f64 = F::MODULUS_VALUE.as_into();
+-    let modulus_after_f64: f64 = modulus_after.as_into();
+-
+-    let reduce = |v: T| {
+-        if v < modulus_after {
+-            v
+-        } else {
+-            v - modulus_after
+-        }
+-    };
+-
+-    let switch = |v: F| {
+-        let v: f64 = v.value().as_into();
+-        reduce(T::as_from(
+-            (v * modulus_after_f64 / modulus_before_f64).round(),
+-        ))
+-    };
++    let modulus_before = F::MODULUS_VALUE.as_into();
++    let switch =
++        |value: F| modulus_switch_value(value.value().as_into(), modulus_before, modulus_after);
+ 
+     destination
+         .a_mut()
+@@ -130,23 +104,62 @@ pub fn lwe_modulus_switch_assign_between_modulus<T: UnsignedInteger>(
+     modulus_before: T,
+     modulus_after: T,
+ ) {
+-    let modulus_before_f64: f64 = modulus_before.as_into();
+-    let modulus_after_f64: f64 = modulus_after.as_into();
+-
+-    let reduce = |v: T| {
+-        if v < modulus_after {
+-            v
+-        } else {
+-            v - modulus_after
+-        }
+-    };
+-
+-    let switch = |v: T| {
+-        reduce(T::as_from(
+-            (AsInto::<f64>::as_into(v) * modulus_after_f64 / modulus_before_f64).round(),
+-        ))
+-    };
++    let switch =
++        |value: T| modulus_switch_value(value.as_into(), modulus_before.as_into(), modulus_after);
+ 
+     c.a_mut().iter_mut().for_each(|v| *v = switch(*v));
+     *c.b_mut() = switch(c.b());
+ }
++
++#[cfg(test)]
++mod tests {
++    use algebra::{Field, Goldilocks};
++
++    use super::*;
++
++    const Q: u64 = Goldilocks::MODULUS_VALUE;
++    const TWO_N: u64 = 2048;
++
++    #[test]
++    fn exact_rounding_handles_goldilocks_segment_boundaries() {
++        let values = [
++            0,
++            1,
++            Q / (2 * TWO_N) - 1,
++            Q / (2 * TWO_N),
++            Q / (2 * TWO_N) + 1,
++            Q / 2 - 1,
++            Q / 2,
++            Q - 2,
++            Q - 1,
++        ];
++
++        for value in values {
++            let expected = (((value as u128) * (TWO_N as u128) + (Q as u128 / 2)) / Q as u128
++                % TWO_N as u128) as u64;
++            assert_eq!(
++                modulus_switch_value(value as u128, Q as u128, TWO_N),
++                expected
++            );
++        }
++    }
++
++    #[test]
++    fn traced_and_inplace_variants_match() {
++        let input = LWE::new(
++            vec![
++                Goldilocks::new(0),
++                Goldilocks::new(Q / 2),
++                Goldilocks::new(Q - 1),
++            ],
++            Goldilocks::new(Q / 3),
++        );
++        let expected = lwe_modulus_switch(&input, TWO_N);
++        let (traced, _) = lwe_modulus_switch_w_trace(&input, TWO_N);
++        let mut inplace = LWE::new(vec![0; input.a().len()], 0);
++        lwe_modulus_switch_inplace(input, TWO_N, &mut inplace);
++
++        assert_eq!(traced, expected);
++        assert_eq!(inplace, expected);
++    }
++}

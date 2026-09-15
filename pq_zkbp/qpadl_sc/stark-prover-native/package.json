@@ -1,0 +1,8 @@
+{
+  "name": "stark-prover-native",
+  "version": "0.1.0",
+  "napi": {
+    "name": "stark-prover-native",
+    "triples": {}
+  }
+}

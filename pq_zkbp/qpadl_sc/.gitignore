@@ -1,0 +1,7 @@
+package-lock.json
+typechain-types/*
+stark-prover-native/target/*
+stark-prover-native/stark-prover-native.*
+node_modules/*
+cache/*
+artifacts/*

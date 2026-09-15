@@ -1,0 +1,46 @@
+[package]
+name = "vfhe"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = ["parallel"]
+parallel = [
+    "p3-uni-stark/parallel",
+    "p3-batch-stark/parallel",
+    "p3-lookup/parallel",
+    "p3-dft/parallel",
+    "p3-util/parallel",
+]
+
+[dependencies]
+# FHE library (local)
+tfhe-goldilocks = { path = "../FHE-main" }
+haste-algebra = { package = "algebra", path = "../HasteBoots-main/algebra" }
+haste-lattice = { package = "lattice", path = "../HasteBoots-main/lattice" }
+haste-fhe-core = { package = "fhe_core", path = "../HasteBoots-main/fhe_core" }
+haste-tfhe = { package = "tfhe", path = "../HasteBoots-main/tfhe" }
+
+# Plonky3 STARK framework
+p3-air = { path = "../Plonky3-main/air" }
+p3-field = { path = "../Plonky3-main/field" }
+p3-goldilocks = { path = "../Plonky3-main/goldilocks" }
+p3-matrix = { path = "../Plonky3-main/matrix" }
+p3-uni-stark = { path = "../Plonky3-main/uni-stark" }
+p3-batch-stark = { path = "../Plonky3-main/batch-stark" }
+p3-lookup = { path = "../Plonky3-main/lookup" }
+p3-challenger = { path = "../Plonky3-main/challenger" }
+p3-commit = { path = "../Plonky3-main/commit" }
+p3-dft = { path = "../Plonky3-main/dft" }
+p3-fri = { path = "../Plonky3-main/fri" }
+p3-merkle-tree = { path = "../Plonky3-main/merkle-tree" }
+p3-symmetric = { path = "../Plonky3-main/symmetric" }
+p3-poseidon2 = { path = "../Plonky3-main/poseidon2" }
+p3-util = { path = "../Plonky3-main/util" }
+
+# Serialization (for proof size measurement)
+serde = { version = "1", features = ["derive", "alloc"], default-features = false }
+postcard = { version = "1.1.3", features = ["alloc"], default-features = false }
+
+# Shared dependencies (same version as FHE-main)
+rand = "0.8"
