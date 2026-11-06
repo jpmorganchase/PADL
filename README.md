@@ -1,6 +1,6 @@
-# Quantum-PADL
-## Customized & Efficient ZK toolkit for Private and auditable Ledger/Multi-Assets Token
-Transaction protocol on zero-knowledge proofs for inter-parties framework for exploring applications for financial institutes. Quantum-based Padl utilises Sigma Protocols and range proofs in lattice-base cryptography.
+# Post-Quantum PADL
+## Customised & Efficient ZK tool for Private and Auditable, Distributed Ledger / Multi-Assets Token
+Transaction protocol on zero-knowledge proofs for inter-parties framework for exploring applications for financial institutes. Quantum-based Padl utilises sigma Protocols and range proofs in lattice-base cryptography.
 
 - post quantum padl ledger: pq_zkbp/padl_pq
 - succinct post quantum with smart contract verifier (north-star): pq_zkbp/qpadl_sc
