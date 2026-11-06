@@ -1,5 +1,6 @@
 # Post-Quantum PADL
-## Customised & Efficient ZK tool for Private and Auditable, Distributed Ledger / Multi-Assets Token
+## Privacy-Preserving and Auditable Distributed Ledger/Token with Post-Quantum Cryptography
+
 The framework explores efficient zero-knowledge proofs for confidential single- and multi-asset transactions, leveraging lattice-based Sigma protocols, commitment schemes and compact range proofs.
 
 ## Repository Structure
