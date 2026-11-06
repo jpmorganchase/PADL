@@ -2,11 +2,12 @@
 ## Customized & Efficient ZK toolkit for Private and auditable Ledger/Multi-Assets Token
 Transaction protocol on zero-knowledge proofs for inter-parties framework for exploring applications for financial institutes. Quantum-based Padl utilises Sigma Protocols and range proofs in lattice-base cryptography.
 
+- post quantum padl ledger: pq_zkbp/padl_pq
+- succinct post quantum with smart contract verifier (north-star): pq_zkbp/qpadl_sc
+- verifiable FHE exp:  pq_zkbp/qpadl_sc/exp
 
 ### Env. Prerequests
-1. python > 3.8 and Rust.
-
-2. For testing on EVM smart contracts: `nodejs`, and for local evm testing env., for example ganache-cli or geth.
+python > 3.8 and Rust.
 
 ## Papers
 https://arxiv.org/pdf/2603.05005
