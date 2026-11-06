@@ -1,12 +1,6 @@
-# PADL
-## Customized & Efficient ZK toolkit for Private and auditable Ledger
-
-PADL is based on zero-knowledge proofs for inter-parties framework for exploring applications for financial institutes. Padl utilises Sigma Protocols and range proofs on homomorphic multi-asset ledger with smart-contracts capability to verify transactions on chain.
-
-## Env for Private Auditable And Distributed Ledger
-- Padl includes rust lib 'zkbp' wrapped in python, so can be used directly as a python package for using crypto primitives and proof generations. 
-  Rust implementation is highly based on bn254 (Ark-bn254) and secp256k1 from ZenGo-X/curv with bulletproofs, as well as extended ZKP with sigma protocols+range proofs.
-- Padl Smart-Contracts developed in solidity based on ECC for deployment on evm network, providing fast proofs verification for multi-assets tx and implementation of padl-private token.
+# Quantum-PADL
+## Customized & Efficient ZK toolkit for Private and auditable Ledger/Multi-Assets Token
+Transaction protocol on zero-knowledge proofs for inter-parties framework for exploring applications for financial institutes. Quantum-based Padl utilises Sigma Protocols and range proofs in lattice-base cryptography.
 
 
 ### Env. Prerequests
@@ -14,16 +8,8 @@ PADL is based on zero-knowledge proofs for inter-parties framework for exploring
 
 2. For testing on EVM smart contracts: `nodejs`, and for local evm testing env., for example ganache-cli or geth.
 
-### PADL Installation
-for zkbp:
-pip `install zkbp`
-
-from source:
-clone and run `python setup.py init`
-
-See more examples (pyledger/examples), and tutorials under (./tutorials).
-## PADL Paper
-https://arxiv.org/abs/2501.03808
+## Papers
+https://arxiv.org/pdf/2603.05005
 
 ## License
 PADL has a Apache v2-style license, as found in the LICENSE file.
