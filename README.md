@@ -1,16 +1,23 @@
 # Post-Quantum PADL
 ## Customised & Efficient ZK tool for Private and Auditable, Distributed Ledger / Multi-Assets Token
-Transaction protocol on zero-knowledge proofs for inter-parties framework for exploring applications for financial institutes. Quantum-based Padl utilises sigma Protocols and range proofs in lattice-base cryptography.
+The framework explores efficient zero-knowledge proofs for confidential single- and multi-asset transactions, leveraging lattice-based Sigma protocols, commitment schemes and compact range proofs.
 
-- post quantum padl ledger: pq_zkbp/padl_pq
-- succinct post quantum with smart contract verifier (north-star): pq_zkbp/qpadl_sc
-- verifiable FHE exp:  pq_zkbp/qpadl_sc/exp
+## Repository Structure
 
-### Env. Prerequests
-python > 3.8 and Rust.
+- **Post-Quantum Ledger:** [`pq_zkbp/padl_pq`](pq_zkbp/padl_pq) - Core post-quantum transaction protocol and ledger implementation.
+- **Succinct Proofs & Smart Contracts:** [`pq_zkbp/qpadl_sc`](pq_zkbp/qpadl_sc) - Research towards succinct post-quantum proofs with on-chain verification.
+- **Verifiable FHE:** [`pq_zkbp/qpadl_sc/exp`](pq_zkbp/qpadl_sc/exp) - Experimental verifiable fully homomorphic encryption.
+- **pyledger:** [`pq_zkbp/pyledger`](pq_zkbp/qpadl_sc/exp) - original padl with EC cryptography.
+- 
+## Prerequisites
+- Rust toolchain
+- Python 3.9+
 
-## Papers
-https://arxiv.org/pdf/2603.05005
+
+## Research Paper
+
+[arXiv:2603.05005](https://arxiv.org/abs/2603.05005)
+
 
 ## License
 PADL has a Apache v2-style license, as found in the LICENSE file.
