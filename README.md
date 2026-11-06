@@ -8,7 +8,7 @@ The framework explores efficient zero-knowledge proofs for confidential single- 
 - **Succinct Proofs & Smart Contracts:** [`pq_zkbp/qpadl_sc`](pq_zkbp/qpadl_sc) - Research towards succinct post-quantum proofs with on-chain verification.
 - **Verifiable FHE:** [`pq_zkbp/qpadl_sc/exp`](pq_zkbp/qpadl_sc/exp) - Experimental verifiable fully homomorphic encryption.
 - **pyledger:** [`pq_zkbp/pyledger`](pq_zkbp/qpadl_sc/exp) - original padl with EC cryptography.
-- 
+
 ## Prerequisites
 - Rust toolchain
 - Python 3.9+
